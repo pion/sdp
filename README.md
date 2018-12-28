@@ -39,7 +39,6 @@ Check out the **[contributing wiki](https://github.com/pions/webrtc/wiki/Contrib
 * [Michiel De Backker](https://github.com/backkem) - *Public API, Initialization*
 * [Konstantin Itskov](https://github.com/trivigy) - *Fix documentation*
 * [chenkaiC4](https://github.com/chenkaiC4) - *Fix GolangCI Linter*
-* [Ronan J](https://github.com/ronanj) - *Fix PPID*
 * [Woodrow Douglass](https://github.com/wdouglass) *RTCP, RTP improvements, G.722 support, Bugfixes*
 
 ### License
