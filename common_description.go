@@ -109,3 +109,15 @@ func (a *Attribute) String() *string {
 	}
 	return &output
 }
+
+// IsICECandidate returns true if the attribute key equals "candidate".
+func (a *Attribute) IsICECandidate() bool {
+	return a.Key == "candidate"
+}
+
+// ToICECandidate parses the attribute as an ICE Candidate.
+func (a *Attribute) ToICECandidate() (ICECandidate, error) {
+	var parsed ICECandidate
+	err := parsed.unmarshalString(a.Value)
+	return parsed, err
+}
