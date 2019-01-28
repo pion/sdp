@@ -40,6 +40,7 @@ Check out the **[contributing wiki](https://github.com/pions/webrtc/wiki/Contrib
 * [Konstantin Itskov](https://github.com/trivigy) - *Fix documentation*
 * [chenkaiC4](https://github.com/chenkaiC4) - *Fix GolangCI Linter*
 * [Woodrow Douglass](https://github.com/wdouglass) *RTCP, RTP improvements, G.722 support, Bugfixes*
+* [Michael MacDonald](https://github.com/mjmac)
 
 ### License
 MIT License - see [LICENSE](LICENSE) for full text

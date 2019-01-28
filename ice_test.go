@@ -47,27 +47,3 @@ func TestICECandidateFailure(t *testing.T) {
 		}
 	}
 }
-
-func (c ICECandidate) equals(other ICECandidate) bool {
-	if c.Foundation != other.Foundation ||
-		c.Component != other.Component ||
-		c.Priority != other.Priority ||
-		c.IP != other.IP ||
-		c.Protocol != other.Protocol ||
-		c.Port != other.Port ||
-		c.Typ != other.Typ ||
-		c.RelatedAddress != other.RelatedAddress ||
-		c.RelatedPort != other.RelatedPort ||
-		len(c.ExtensionAttributes) != len(other.ExtensionAttributes) {
-		return false
-	}
-
-	for i, attr := range c.ExtensionAttributes {
-		otherAttr := other.ExtensionAttributes[i]
-		if attr.Key != otherAttr.Key ||
-			attr.Value != otherAttr.Value {
-			return false
-		}
-	}
-	return true
-}
