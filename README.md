@@ -10,7 +10,7 @@
   <a href="http://gophers.slack.com/messages/pion"><img src="https://img.shields.io/badge/join-us%20on%20slack-gray.svg?longCache=true&logo=slack&colorB=brightgreen" alt="Slack Widget"></a>
   <a href="https://waffle.io/pions/webrtc"><img src="https://img.shields.io/badge/pm-waffle-gray.svg?longCache=true&colorB=brightgreen" alt="Waffle board"></a>
   <br>
-  <a href="https://travis-ci.org/pions/sdp"><img src="https://travis-ci.org/pions/sdp.svg?branch=master" alt="Build Status"></a>-->
+  <a href="https://travis-ci.org/pions/sdp"><img src="https://travis-ci.org/pions/sdp.svg?branch=master" alt="Build Status"></a>
   <a href="https://godoc.org/github.com/pions/sdp"><img src="https://godoc.org/github.com/pions/sdp?status.svg" alt="GoDoc"></a>
   <a href="https://coveralls.io/github/pions/sdp"><img src="https://coveralls.io/repos/github/pions/sdp/badge.svg" alt="Coverage Status"></a>
   <a href="https://goreportcard.com/report/github.com/pions/sdp"><img src="https://goreportcard.com/badge/github.com/pions/sdp" alt="Go Report Card"></a>
