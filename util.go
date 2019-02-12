@@ -2,6 +2,7 @@ package sdp
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -9,8 +10,6 @@ import (
 	"strings"
 
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // ConnectionRole indicates which of the end points should initiate the connection establishment
@@ -124,7 +123,7 @@ func readType(input *bufio.Reader) (string, error) {
 	}
 
 	if len(key) != 2 {
-		return key, errors.Errorf("sdp: invalid syntax `%v`", key)
+		return key, fmt.Errorf("sdp: invalid syntax `%v`", key)
 	}
 
 	return key, nil
