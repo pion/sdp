@@ -1,1 +1,1 @@
-module github.com/pions/sdp
+module github.com/pions/sdp/v2
