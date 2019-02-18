@@ -17,8 +17,8 @@ const (
 	AttrKeyConnectionSetup = "setup"
 	AttrKeyMID             = "mid"
 	AttrKeyICELite         = "ice-lite"
-	AttrKeyRtcpMux         = "rtcp-mux"
-	AttrKeyRtcpRsize       = "rtcp-rsize"
+	AttrKeyRTCPMux         = "rtcp-mux"
+	AttrKeyRTCPRsize       = "rtcp-rsize"
 )
 
 // Constants for semantic tokens used in JSEP
