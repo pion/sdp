@@ -11,8 +11,8 @@ import (
 const (
 	AttrKeyIdentity        = "identity"
 	AttrKeyGroup           = "group"
-	AttrKeySsrc            = "ssrc"
-	AttrKeySsrcGroup       = "ssrc-group"
+	AttrKeySSRC            = "ssrc"
+	AttrKeySSRCGroup       = "ssrc-group"
 	AttrKeyMsidSemantic    = "msid-semantic"
 	AttrKeyConnectionSetup = "setup"
 	AttrKeyMID             = "mid"
