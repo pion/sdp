@@ -2,6 +2,7 @@ package sdp
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"strings"
 
@@ -81,10 +82,10 @@ import (
 // |   s15  |    |    14 |    |     | 15 |     |   |    | 12 |   |   |     |   |   |    |   |    |
 // |   s16  |    |    14 |    |     |    |  15 |   |    | 12 |   |   |     |   |   |    |   |    |
 // +--------+----+-------+----+-----+----+-----+---+----+----+---+---+-----+---+---+----+---+----+
-func (s *SessionDescription) Unmarshal(value string) error {
+func (s *SessionDescription) Unmarshal(value []byte) error {
 	l := &lexer{
 		desc:  s,
-		input: bufio.NewReader(strings.NewReader(value)),
+		input: bufio.NewReader(bytes.NewReader(value)),
 	}
 	for state := s1; state != nil; {
 		var err error

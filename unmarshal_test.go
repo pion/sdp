@@ -186,7 +186,7 @@ func TestRoundTrip(t *testing.T) {
 	} {
 		sd := &SessionDescription{}
 
-		err := sd.Unmarshal(test.SDP)
+		err := sd.Unmarshal([]byte(test.SDP))
 		if got, want := err, error(nil); got != want {
 			t.Fatalf("Unmarshal(%s): err=%v, want %v", test.Name, got, want)
 		}
@@ -203,7 +203,7 @@ func TestRoundTrip(t *testing.T) {
 
 func TestUnmarshalRepeatTimes(t *testing.T) {
 	sd := &SessionDescription{}
-	if err := sd.Unmarshal(RepeatTimesSDP); err != nil {
+	if err := sd.Unmarshal([]byte(RepeatTimesSDP)); err != nil {
 		t.Errorf("error: %v", err)
 	}
 
@@ -218,7 +218,7 @@ func TestUnmarshalRepeatTimes(t *testing.T) {
 
 func TestUnmarshalTimeZones(t *testing.T) {
 	sd := &SessionDescription{}
-	if err := sd.Unmarshal(TimeZonesSDP); err != nil {
+	if err := sd.Unmarshal([]byte(TimeZonesSDP)); err != nil {
 		t.Errorf("error: %v", err)
 	}
 
