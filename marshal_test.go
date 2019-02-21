@@ -158,8 +158,11 @@ func TestMarshalCanonical(t *testing.T) {
 		},
 	}
 
-	actual := sd.Marshal()
-	if actual != CanonicalMarshalSDP {
+	actual, err := sd.Marshal()
+	if got, want := err, error(nil); got != want {
+		t.Fatalf("Marshal(): err=%v, want %v", got, want)
+	}
+	if string(actual) != CanonicalMarshalSDP {
 		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", CanonicalMarshalSDP, actual)
 	}
 }
