@@ -110,75 +110,91 @@ const (
 		"a=rtpmap:99 h263-1998/90000\r\n"
 )
 
-func TestUnmarshalSessionInformation(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(SessionInformationSDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
+func TestRoundTrip(t *testing.T) {
+	for _, test := range []struct {
+		Name string
+		SDP  string
+	}{
+		{
+			Name: "SessionInformation",
+			SDP:  SessionInformationSDP,
+		},
+		{
+			Name: "URI",
+			SDP:  URISDP,
+		},
+		{
+			Name: "EmailAddress",
+			SDP:  string(EmailAddressSDP),
+		},
+		{
+			Name: "PhoneNumber",
+			SDP:  PhoneNumberSDP,
+		},
+		{
+			Name: "SessionConnectionInformation",
+			SDP:  SessionConnectionInformationSDP,
+		},
+		{
+			Name: "SessionConnectionInformation",
+			SDP:  SessionConnectionInformationSDP,
+		},
+		{
+			Name: "SessionBandwidth",
+			SDP:  SessionBandwidthSDP,
+		},
+		{
+			Name: "SessionEncryptionKey",
+			SDP:  SessionEncryptionKeySDP,
+		},
+		{
+			Name: "SessionAttributes",
+			SDP:  SessionAttributesSDP,
+		},
+		{
+			Name: "MediaName",
+			SDP:  MediaNameSDP,
+		},
+		{
+			Name: "MediaTitle",
+			SDP:  MediaTitleSDP,
+		},
+		{
+			Name: "MediaConnectionInformation",
+			SDP:  MediaConnectionInformationSDP,
+		},
+		{
+			Name: "MediaConnectionInformation",
+			SDP:  MediaConnectionInformationSDP,
+		},
+		{
+			Name: "MediaBandwidth",
+			SDP:  MediaBandwidthSDP,
+		},
+		{
+			Name: "MediaEncryptionKey",
+			SDP:  MediaEncryptionKeySDP,
+		},
+		{
+			Name: "MediaAttributes",
+			SDP:  MediaAttributesSDP,
+		},
+		{
+			Name: "CanonicalUnmarshal",
+			SDP:  CanonicalUnmarshalSDP,
+		},
+	} {
+		sd := &SessionDescription{}
 
-	actual := sd.Marshal()
-	if actual != SessionInformationSDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", SessionInformationSDP, actual)
-	}
-}
+		err := sd.Unmarshal(test.SDP)
+		if got, want := err, error(nil); got != want {
+			t.Fatalf("Unmarshal(%s): err=%v, want %v", test.Name, got, want)
+		}
 
-func TestUnmarshalURI(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(URISDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
-
-	actual := sd.Marshal()
-	if actual != URISDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", URISDP, actual)
-	}
-}
-
-func TestUnmarshalEmailAddress(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(EmailAddressSDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
-
-	actual := sd.Marshal()
-	if actual != EmailAddressSDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", EmailAddressSDP, actual)
-	}
-}
-
-func TestUnmarshalPhoneNumber(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(PhoneNumberSDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
-
-	actual := sd.Marshal()
-	if actual != PhoneNumberSDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", PhoneNumberSDP, actual)
-	}
-}
-
-func TestUnmarshalSessionConnectionInformation(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(SessionConnectionInformationSDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
-
-	actual := sd.Marshal()
-	if actual != SessionConnectionInformationSDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", SessionConnectionInformationSDP, actual)
-	}
-}
-
-func TestUnmarshalSessionBandwidth(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(SessionBandwidthSDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
-
-	actual := sd.Marshal()
-	if actual != SessionBandwidthSDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", SessionBandwidthSDP, actual)
+		data := sd.Marshal()
+		if got, want := data, test.SDP; got != want {
+			t.Fatalf("Marshal(%s) = %q, want %q", test.Name, got, want)
+		}
 	}
 }
 
@@ -203,113 +219,5 @@ func TestUnmarshalTimeZones(t *testing.T) {
 	actual := sd.Marshal()
 	if actual != TimeZonesSDPExpected {
 		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", TimeZonesSDPExpected, actual)
-	}
-}
-
-func TestUnmarshalSessionEncryptionKey(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(SessionEncryptionKeySDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
-
-	actual := sd.Marshal()
-	if actual != SessionEncryptionKeySDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", SessionEncryptionKeySDP, actual)
-	}
-}
-
-func TestUnmarshalSessionAttributes(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(SessionAttributesSDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
-
-	actual := sd.Marshal()
-	if actual != SessionAttributesSDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", SessionAttributesSDP, actual)
-	}
-}
-
-func TestUnmarshalMediaName(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(MediaNameSDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
-
-	actual := sd.Marshal()
-	if actual != MediaNameSDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", MediaNameSDP, actual)
-	}
-}
-
-func TestUnmarshalMediaTitle(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(MediaTitleSDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
-
-	actual := sd.Marshal()
-	if actual != MediaTitleSDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", MediaTitleSDP, actual)
-	}
-}
-
-func TestUnmarshalMediaConnectionInformation(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(MediaConnectionInformationSDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
-
-	actual := sd.Marshal()
-	if actual != MediaConnectionInformationSDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", MediaConnectionInformationSDP, actual)
-	}
-}
-
-func TestUnmarshalMediaBandwidth(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(MediaBandwidthSDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
-
-	actual := sd.Marshal()
-	if actual != MediaBandwidthSDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", MediaBandwidthSDP, actual)
-	}
-}
-
-func TestUnmarshalMediaEncryptionKey(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(MediaEncryptionKeySDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
-
-	actual := sd.Marshal()
-	if actual != MediaEncryptionKeySDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", MediaEncryptionKeySDP, actual)
-	}
-}
-
-func TestUnmarshalMediaAttributes(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(MediaAttributesSDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
-
-	actual := sd.Marshal()
-	if actual != MediaAttributesSDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", MediaAttributesSDP, actual)
-	}
-}
-
-func TestUnmarshalCanonical(t *testing.T) {
-	sd := &SessionDescription{}
-	if err := sd.Unmarshal(CanonicalUnmarshalSDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
-
-	actual := sd.Marshal()
-	if actual != CanonicalUnmarshalSDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", CanonicalUnmarshalSDP, actual)
 	}
 }
