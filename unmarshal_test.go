@@ -191,8 +191,11 @@ func TestRoundTrip(t *testing.T) {
 			t.Fatalf("Unmarshal(%s): err=%v, want %v", test.Name, got, want)
 		}
 
-		data := sd.Marshal()
-		if got, want := data, test.SDP; got != want {
+		actual, err := sd.Marshal()
+		if got, want := err, error(nil); got != want {
+			t.Fatalf("Marshal(): err=%v, want %v", got, want)
+		}
+		if got, want := string(actual), test.SDP; got != want {
 			t.Fatalf("Marshal(%s) = %q, want %q", test.Name, got, want)
 		}
 	}
@@ -204,8 +207,11 @@ func TestUnmarshalRepeatTimes(t *testing.T) {
 		t.Errorf("error: %v", err)
 	}
 
-	actual := sd.Marshal()
-	if actual != RepeatTimesSDPExpected {
+	actual, err := sd.Marshal()
+	if got, want := err, error(nil); got != want {
+		t.Fatalf("Marshal(): err=%v, want %v", got, want)
+	}
+	if string(actual) != RepeatTimesSDPExpected {
 		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", RepeatTimesSDPExpected, actual)
 	}
 }
@@ -216,8 +222,11 @@ func TestUnmarshalTimeZones(t *testing.T) {
 		t.Errorf("error: %v", err)
 	}
 
-	actual := sd.Marshal()
-	if actual != TimeZonesSDPExpected {
+	actual, err := sd.Marshal()
+	if got, want := err, error(nil); got != want {
+		t.Fatalf("Marshal(): err=%v, want %v", got, want)
+	}
+	if string(actual) != TimeZonesSDPExpected {
 		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", TimeZonesSDPExpected, actual)
 	}
 }

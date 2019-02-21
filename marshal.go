@@ -35,7 +35,8 @@ import (
 //    b=* (zero or more bandwidth information lines)
 //    k=* (encryption key)
 //    a=* (zero or more media attribute lines)
-func (s *SessionDescription) Marshal() (raw string) {
+func (s *SessionDescription) Marshal() ([]byte, error) {
+	var raw string
 	raw += keyValueBuild("v=", s.Version.String())
 	raw += keyValueBuild("o=", s.Origin.String())
 	raw += keyValueBuild("s=", s.SessionName.String())
@@ -114,5 +115,5 @@ func (s *SessionDescription) Marshal() (raw string) {
 		}
 	}
 
-	return raw
+	return []byte(raw), nil
 }
