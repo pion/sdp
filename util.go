@@ -10,6 +10,16 @@ import (
 	"strings"
 
 	"time"
+
+	pkgerrors "github.com/pkg/errors"
+
+	"github.com/pions/webrtc/pkg/rtcerr"
+)
+
+const (
+	pkgName      = "sdp"
+	endline      = "\r\n"
+	attributeKey = "a="
 )
 
 // ConnectionRole indicates which of the end points should initiate the connection establishment
@@ -57,6 +67,11 @@ type Codec struct {
 	EncodingParameters string
 	Fmtp               string
 }
+
+const (
+	unknown    = iota
+	unknownStr = "unknown"
+)
 
 func (c Codec) String() string {
 	return fmt.Sprintf("%d %s/%d/%s", c.PayloadType, c.Name, c.ClockRate, c.EncodingParameters)
@@ -123,7 +138,7 @@ func readType(input *bufio.Reader) (string, error) {
 	}
 
 	if len(key) != 2 {
-		return key, fmt.Errorf("sdp: invalid syntax `%v`", key)
+		return key, pkgerrors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", key)}, pkgName)
 	}
 
 	return key, nil
@@ -132,11 +147,11 @@ func readType(input *bufio.Reader) (string, error) {
 func readValue(input *bufio.Reader) (string, error) {
 	line, err := input.ReadString('\n')
 	if err != nil && err != io.EOF {
-		return line, err
+		return line, pkgerrors.Wrap(&rtcerr.UnknownError{Err: err}, pkgName)
 	}
 
 	if len(line) == 0 {
-		return line, nil
+		return line, pkgerrors.Wrap(&rtcerr.UnknownError{Err: io.EOF}, pkgName)
 	}
 
 	if line[len(line)-1] == '\n' {
