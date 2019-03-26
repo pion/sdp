@@ -15,7 +15,7 @@ import (
 // Unmarshal is the primary function that deserializes the session description
 // message and stores it inside of a structured SessionDescription object.
 //
-// The States Sransition Table describes the computation flow between functions
+// The States Transition Table describes the computation flow between functions
 // (namely s1, s2, s3, ...) for a parsing procedure that complies with the
 // specifications laid out by the rfc4566#section-5 as well as by JavaScript
 // Session Establishment Protocol draft. Links:
