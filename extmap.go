@@ -32,19 +32,25 @@ func (e *ExtMap) Unmarshal(raw string) error {
 	}
 
 	fields := strings.Fields(parts[1])
-	if len(parts) < 2 {
+	if len(fields) < 2 {
 		return errors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", raw)}, pkgName)
 	}
 
 	valdir := strings.Split(fields[0], "/")
 	value, err := strconv.ParseInt(valdir[0], 10, 64)
+	if (value < 1) || (value > 246) {
+		return errors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", valdir[0])}, pkgName+": extmap key must be in the range 1-256")
+	}
 	if err != nil {
 		return errors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", valdir[0])}, pkgName)
 	}
 
 	var direction Direction
 	if len(valdir) == 2 {
-		direction = NewDirection(valdir[1])
+		direction, err = NewDirection(valdir[1])
+		if err != nil {
+			return errors.Wrap(&rtcerr.SyntaxError{Err: err}, pkgName)
+		}
 	}
 
 	uri, err := url.Parse(fields[1])
@@ -70,11 +76,15 @@ func (e *ExtMap) Marshal() string {
 
 func (e *ExtMap) string() string {
 	output := fmt.Sprintf("%d", e.Value)
-	if e.Direction != Direction(unknown) {
-		output += "/" + e.Direction.String()
+	dirstring := e.Direction.String()
+	if dirstring != directionUnknownStr {
+		output += "/" + dirstring
 	}
 
-	output += " " + e.URI.String()
+	if e.URI != nil {
+		output += " " + e.URI.String()
+	}
+
 	if e.ExtAttr != nil {
 		output += " " + *e.ExtAttr
 	}
