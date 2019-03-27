@@ -54,7 +54,7 @@ type stateFn func(*lexer) (stateFn, error)
 func readType(input *bufio.Reader) (string, error) {
 	key, err := input.ReadString('=')
 	if err != nil {
-		return key, errors.Wrap(&rtcerr.UnknownError{Err: err}, pkgName)
+		return key, errors.Wrap(err, pkgName)
 	}
 
 	if len(key) != 2 {
