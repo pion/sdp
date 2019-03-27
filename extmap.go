@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+//ExtMap represents the activation of a single RTP header extension
 type ExtMap struct {
 	Value     int
 	Direction Direction
@@ -18,10 +19,12 @@ type ExtMap struct {
 	ExtAttr   *string
 }
 
+//Clone converts this object to an Attribute
 func (e *ExtMap) Clone() Attribute {
 	return Attribute{Key: "extmap", Value: e.string()}
 }
 
+//Unmarshal creates an Extmap from a string
 func (e *ExtMap) Unmarshal(raw string) error {
 	parts := strings.SplitN(raw, ":", 2)
 	if len(parts) != 2 {
@@ -60,6 +63,7 @@ func (e *ExtMap) Unmarshal(raw string) error {
 	return nil
 }
 
+//Marshal creates a string from an ExtMap
 func (e *ExtMap) Marshal() string {
 	return attributeKey + e.Name() + ":" + e.string() + endline
 }
@@ -78,6 +82,7 @@ func (e *ExtMap) string() string {
 	return output
 }
 
+//Name returns the constant name of this object
 func (e *ExtMap) Name() string {
 	return "extmap"
 }
