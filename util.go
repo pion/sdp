@@ -69,8 +69,7 @@ type Codec struct {
 }
 
 const (
-	unknown    = iota
-	unknownStr = "unknown"
+	unknown = iota
 )
 
 func (c Codec) String() string {

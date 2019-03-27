@@ -1,5 +1,7 @@
 package sdp
 
+import "errors"
+
 //Direction is a marker for transmission directon of an endpoint
 type Direction int
 
@@ -19,22 +21,25 @@ const (
 	directionSendOnlyStr = "sendonly"
 	directionRecvOnlyStr = "recvonly"
 	directionInactiveStr = "inactive"
+	directionUnknownStr  = ""
 )
+
+var errDirectionString = errors.New("invalid direction string")
 
 // NewDirection defines a procedure for creating a new direction from a raw
 // string.
-func NewDirection(raw string) Direction {
+func NewDirection(raw string) (Direction, error) {
 	switch raw {
 	case directionSendRecvStr:
-		return DirectionSendRecv
+		return DirectionSendRecv, nil
 	case directionSendOnlyStr:
-		return DirectionSendOnly
+		return DirectionSendOnly, nil
 	case directionRecvOnlyStr:
-		return DirectionRecvOnly
+		return DirectionRecvOnly, nil
 	case directionInactiveStr:
-		return DirectionInactive
+		return DirectionInactive, nil
 	default:
-		return Direction(unknown)
+		return Direction(unknown), errDirectionString
 	}
 }
 
@@ -49,6 +54,6 @@ func (t Direction) String() string {
 	case DirectionInactive:
 		return directionInactiveStr
 	default:
-		return unknownStr
+		return directionUnknownStr
 	}
 }
