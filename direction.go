@@ -1,11 +1,16 @@
 package sdp
 
+//Direction is a marker for transmission directon of an endpoint
 type Direction int
 
 const (
+	//DirectionSendRecv is for bidirectional communication
 	DirectionSendRecv Direction = iota + 1
+	//DirectionSendOnly is for outgoing communication
 	DirectionSendOnly
+	//DirectionRecvOnly is for incoming communication
 	DirectionRecvOnly
+	//DirectionInactive is for no communication
 	DirectionInactive
 )
 
