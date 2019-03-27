@@ -2,125 +2,46 @@ package sdp
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"strconv"
-	"strings"
 
-	"time"
-
-	pkgerrors "github.com/pkg/errors"
+	"github.com/pkg/errors"
 
 	"github.com/pions/webrtc/pkg/rtcerr"
 )
 
 const (
-	pkgName      = "sdp"
-	endline      = "\r\n"
-	attributeKey = "a="
+	pkgName       = "sdp"
+	endline       = "\r\n"
+	versionKey    = "v="
+	originKey     = "o="
+	sessionKey    = "s="
+	infoKey       = "i="
+	uriKey        = "u="
+	emailKey      = "e="
+	phoneKey      = "p="
+	connectionKey = "c="
+	bandwidthKey  = "b="
+	timingKey     = "t="
+	repeatTimeKey = "r="
+	timeZonesKey  = "z="
+	encryptionKey = "k="
+	attributeKey  = "a="
+	mediaKey      = "m="
 )
-
-// ConnectionRole indicates which of the end points should initiate the connection establishment
-type ConnectionRole int
 
 const (
-	// ConnectionRoleActive indicates the endpoint will initiate an outgoing connection.
-	ConnectionRoleActive ConnectionRole = iota + 1
-
-	// ConnectionRolePassive indicates the endpoint will accept an incoming connection.
-	ConnectionRolePassive
-
-	// ConnectionRoleActpass indicates the endpoint is willing to accept an incoming connection or to initiate an outgoing connection.
-	ConnectionRoleActpass
-
-	// ConnectionRoleHoldconn indicates the endpoint does not want the connection to be established for the time being.
-	ConnectionRoleHoldconn
+	unknown    = iota
+	unknownStr = "unknown"
 )
 
-func (t ConnectionRole) String() string {
-	switch t {
-	case ConnectionRoleActive:
-		return "active"
-	case ConnectionRolePassive:
-		return "passive"
-	case ConnectionRoleActpass:
-		return "actpass"
-	case ConnectionRoleHoldconn:
-		return "holdconn"
-	default:
-		return "Unknown"
-	}
+type stringer struct {
+	Value string
 }
 
-func newSessionID() uint64 {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	return uint64(r.Uint32()*2) >> 2
-}
-
-// Codec represents a codec
-type Codec struct {
-	PayloadType        uint8
-	Name               string
-	ClockRate          uint32
-	EncodingParameters string
-	Fmtp               string
-}
-
-const (
-	unknown = iota
-)
-
-func (c Codec) String() string {
-	return fmt.Sprintf("%d %s/%d/%s", c.PayloadType, c.Name, c.ClockRate, c.EncodingParameters)
-}
-
-// GetCodecForPayloadType scans the SessionDescription for the given payloadType and returns the codec
-func (s *SessionDescription) GetCodecForPayloadType(payloadType uint8) (Codec, error) {
-	codec := Codec{
-		PayloadType: payloadType,
-	}
-
-	found := false
-	payloadTypeString := strconv.Itoa(int(payloadType))
-	rtpmapPrefix := "rtpmap:" + payloadTypeString
-	fmtpPrefix := "fmtp:" + payloadTypeString
-
-	for _, m := range s.MediaDescriptions {
-		for _, a := range m.Attributes {
-			if strings.HasPrefix(*a.String(), rtpmapPrefix) {
-				found = true
-				// a=rtpmap:<payload type> <encoding name>/<clock rate> [/<encoding parameters>]
-				split := strings.Split(*a.String(), " ")
-				if len(split) == 2 {
-					split = strings.Split(split[1], "/")
-					codec.Name = split[0]
-					parts := len(split)
-					if parts > 1 {
-						rate, err := strconv.Atoi(split[1])
-						if err != nil {
-							return codec, err
-						}
-						codec.ClockRate = uint32(rate)
-					}
-					if parts > 2 {
-						codec.EncodingParameters = split[2]
-					}
-				}
-			} else if strings.HasPrefix(*a.String(), fmtpPrefix) {
-				// a=fmtp:<format> <format specific parameters>
-				split := strings.Split(*a.String(), " ")
-				if len(split) == 2 {
-					codec.Fmtp = split[1]
-				}
-			}
-		}
-		if found {
-			return codec, nil
-		}
-	}
-	return codec, errors.New("payload type not found")
+func (s stringer) String() string {
+	return s.Value
 }
 
 type lexer struct {
@@ -133,11 +54,11 @@ type stateFn func(*lexer) (stateFn, error)
 func readType(input *bufio.Reader) (string, error) {
 	key, err := input.ReadString('=')
 	if err != nil {
-		return key, err
+		return key, errors.Wrap(&rtcerr.UnknownError{Err: err}, pkgName)
 	}
 
 	if len(key) != 2 {
-		return key, pkgerrors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", key)}, pkgName)
+		return key, errors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", key)}, pkgName)
 	}
 
 	return key, nil
@@ -146,11 +67,11 @@ func readType(input *bufio.Reader) (string, error) {
 func readValue(input *bufio.Reader) (string, error) {
 	line, err := input.ReadString('\n')
 	if err != nil && err != io.EOF {
-		return line, pkgerrors.Wrap(&rtcerr.UnknownError{Err: err}, pkgName)
+		return line, errors.Wrap(&rtcerr.UnknownError{Err: err}, pkgName)
 	}
 
 	if len(line) == 0 {
-		return line, pkgerrors.Wrap(&rtcerr.UnknownError{Err: io.EOF}, pkgName)
+		return line, errors.Wrap(&rtcerr.UnknownError{Err: io.EOF}, pkgName)
 	}
 
 	if line[len(line)-1] == '\n' {
@@ -173,9 +94,51 @@ func indexOf(element string, data []string) int {
 	return -1
 }
 
-func keyValueBuild(key string, value *string) string {
-	if value != nil {
-		return key + *value + "\r\n"
+func parseTimeUnits(value string) (int64, error) {
+	// Some time offsets in the protocol can be provided with a shorthand
+	// notation. This code ensures to convert it to NTP timestamp format.
+	//      d - days (86400 seconds)
+	//      h - hours (3600 seconds)
+	//      m - minutes (60 seconds)
+	//      s - seconds (allowed for completeness)
+	switch value[len(value)-1:] {
+	case "d":
+		num, err := strconv.ParseInt(value[:len(value)-1], 10, 64)
+		if err != nil {
+			return 0, errors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", value)}, pkgName)
+		}
+		return num * 86400, nil
+	case "h":
+		num, err := strconv.ParseInt(value[:len(value)-1], 10, 64)
+		if err != nil {
+			return 0, errors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", value)}, pkgName)
+		}
+		return num * 3600, nil
+	case "m":
+		num, err := strconv.ParseInt(value[:len(value)-1], 10, 64)
+		if err != nil {
+			return 0, errors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", value)}, pkgName)
+		}
+		return num * 60, nil
 	}
-	return ""
+
+	num, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return 0, errors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", value)}, pkgName)
+	}
+
+	return num, nil
+}
+
+func parsePort(value string) (int, error) {
+	port, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, errors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("port %v", port)}, pkgName)
+	}
+
+	if port < 0 || port > 65536 {
+		return 0, errors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("port %v", port)}, pkgName)
+	}
+
+	return port, nil
 }

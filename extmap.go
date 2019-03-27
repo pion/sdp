@@ -21,7 +21,12 @@ type ExtMap struct {
 
 //Clone converts this object to an Attribute
 func (e *ExtMap) Clone() Attribute {
-	return Attribute{Key: "extmap", Value: e.string()}
+	extmap := &ExtMap{}
+	extmap.Value = e.Value
+	extmap.Direction = e.Direction
+	extmap.URI, _ = url.Parse(e.URI.String())
+	extmap.ExtAttr = e.ExtAttr
+	return extmap
 }
 
 //Unmarshal creates an Extmap from a string
@@ -94,5 +99,5 @@ func (e *ExtMap) string() string {
 
 //Name returns the constant name of this object
 func (e *ExtMap) Name() string {
-	return "extmap"
+	return AttributeNameExtMap
 }
