@@ -10,14 +10,9 @@ import (
 	"strings"
 
 	"time"
-
-	pkgerrors "github.com/pkg/errors"
-
-	"github.com/pions/webrtc/pkg/rtcerr"
 )
 
 const (
-	pkgName      = "sdp"
 	endline      = "\r\n"
 	attributeKey = "a="
 )
@@ -137,7 +132,7 @@ func readType(input *bufio.Reader) (string, error) {
 	}
 
 	if len(key) != 2 {
-		return key, pkgerrors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", key)}, pkgName)
+		return key, fmt.Errorf("SyntaxError: %v", key)
 	}
 
 	return key, nil
@@ -146,11 +141,11 @@ func readType(input *bufio.Reader) (string, error) {
 func readValue(input *bufio.Reader) (string, error) {
 	line, err := input.ReadString('\n')
 	if err != nil && err != io.EOF {
-		return line, pkgerrors.Wrap(&rtcerr.UnknownError{Err: err}, pkgName)
+		return line, err
 	}
 
 	if len(line) == 0 {
-		return line, pkgerrors.Wrap(&rtcerr.UnknownError{Err: io.EOF}, pkgName)
+		return line, io.EOF
 	}
 
 	if line[len(line)-1] == '\n' {

@@ -5,10 +5,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-
-	"github.com/pions/webrtc/pkg/rtcerr"
-
-	"github.com/pkg/errors"
 )
 
 //ExtMap represents the activation of a single RTP header extension
@@ -28,34 +24,34 @@ func (e *ExtMap) Clone() Attribute {
 func (e *ExtMap) Unmarshal(raw string) error {
 	parts := strings.SplitN(raw, ":", 2)
 	if len(parts) != 2 {
-		return errors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", raw)}, pkgName)
+		return fmt.Errorf("SyntaxError: %v", raw)
 	}
 
 	fields := strings.Fields(parts[1])
 	if len(fields) < 2 {
-		return errors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", raw)}, pkgName)
+		return fmt.Errorf("SyntaxError: %v", raw)
 	}
 
 	valdir := strings.Split(fields[0], "/")
 	value, err := strconv.ParseInt(valdir[0], 10, 64)
 	if (value < 1) || (value > 246) {
-		return errors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", valdir[0])}, pkgName+": extmap key must be in the range 1-256")
+		return fmt.Errorf("SyntaxError: %v -- extmap key must be in the range 1-256", valdir[0])
 	}
 	if err != nil {
-		return errors.Wrap(&rtcerr.SyntaxError{Err: fmt.Errorf("%v", valdir[0])}, pkgName)
+		return fmt.Errorf("SyntaxError: %v", valdir[0])
 	}
 
 	var direction Direction
 	if len(valdir) == 2 {
 		direction, err = NewDirection(valdir[1])
 		if err != nil {
-			return errors.Wrap(&rtcerr.SyntaxError{Err: err}, pkgName)
+			return err
 		}
 	}
 
 	uri, err := url.Parse(fields[1])
 	if err != nil {
-		return errors.Wrap(&rtcerr.UnknownError{Err: err}, pkgName)
+		return err
 	}
 
 	if len(fields) == 3 {
