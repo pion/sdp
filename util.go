@@ -72,53 +72,6 @@ func (c Codec) String() string {
 	return fmt.Sprintf("%d %s/%d/%s (%s)", c.PayloadType, c.Name, c.ClockRate, c.EncodingParameters, c.Fmtp)
 }
 
-// GetCodecForPayloadType scans the SessionDescription for the given payloadType and returns the codec
-func (s *SessionDescription) GetCodecForPayloadType(payloadType uint8) (Codec, error) {
-	codec := Codec{
-		PayloadType: payloadType,
-	}
-
-	found := false
-	payloadTypeString := strconv.Itoa(int(payloadType))
-	rtpmapPrefix := "rtpmap:" + payloadTypeString
-	fmtpPrefix := "fmtp:" + payloadTypeString
-
-	for _, m := range s.MediaDescriptions {
-		for _, a := range m.Attributes {
-			if strings.HasPrefix(*a.String(), rtpmapPrefix) {
-				found = true
-				// a=rtpmap:<payload type> <encoding name>/<clock rate> [/<encoding parameters>]
-				split := strings.Split(*a.String(), " ")
-				if len(split) == 2 {
-					split = strings.Split(split[1], "/")
-					codec.Name = split[0]
-					parts := len(split)
-					if parts > 1 {
-						rate, err := strconv.Atoi(split[1])
-						if err != nil {
-							return codec, err
-						}
-						codec.ClockRate = uint32(rate)
-					}
-					if parts > 2 {
-						codec.EncodingParameters = split[2]
-					}
-				}
-			} else if strings.HasPrefix(*a.String(), fmtpPrefix) {
-				// a=fmtp:<format> <format specific parameters>
-				split := strings.Split(*a.String(), " ")
-				if len(split) == 2 {
-					codec.Fmtp = split[1]
-				}
-			}
-		}
-		if found {
-			return codec, nil
-		}
-	}
-	return codec, errors.New("payload type not found")
-}
-
 func parseRtpmap(rtpmap string) (Codec, error) {
 	var codec Codec
 	parsingFailed := errors.New("could not extract codec from rtpmap")
@@ -268,6 +221,18 @@ func codecsMatch(wanted, got Codec) bool {
 	}
 
 	return true
+}
+
+// GetCodecForPayloadType scans the SessionDescription for the given payload type and returns the codec
+func (s *SessionDescription) GetCodecForPayloadType(payloadType uint8) (Codec, error) {
+	codecs := s.buildCodecMap()
+
+	codec, ok := codecs[payloadType]
+	if ok {
+		return codec, nil
+	}
+
+	return codec, errors.New("payload type not found")
 }
 
 // GetPayloadTypeForCodec scans the SessionDescription for a codec that matches the provided codec
