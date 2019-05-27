@@ -40,6 +40,7 @@ Check out the **[contributing wiki](https://github.com/pion/webrtc/wiki/Contribu
 * [Woodrow Douglass](https://github.com/wdouglass) *RTCP, RTP improvements, G.722 support, Bugfixes*
 * [Michael MacDonald](https://github.com/mjmac)
 * [Max Hawkins](https://github.com/maxhawkins)
+* [mchlrhw](https://github.com/mchlrhw)
 
 ### License
 MIT License - see [LICENSE](LICENSE) for full text

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -68,7 +69,7 @@ const (
 )
 
 func (c Codec) String() string {
-	return fmt.Sprintf("%d %s/%d/%s", c.PayloadType, c.Name, c.ClockRate, c.EncodingParameters)
+	return fmt.Sprintf("%d %s/%d/%s (%s)", c.PayloadType, c.Name, c.ClockRate, c.EncodingParameters, c.Fmtp)
 }
 
 // GetCodecForPayloadType scans the SessionDescription for the given payloadType and returns the codec
@@ -116,6 +117,171 @@ func (s *SessionDescription) GetCodecForPayloadType(payloadType uint8) (Codec, e
 		}
 	}
 	return codec, errors.New("payload type not found")
+}
+
+func parseRtpmap(rtpmap string) (Codec, error) {
+	var codec Codec
+	parsingFailed := errors.New("could not extract codec from rtpmap")
+
+	// a=rtpmap:<payload type> <encoding name>/<clock rate>[/<encoding parameters>]
+	split := strings.Split(rtpmap, " ")
+	if len(split) != 2 {
+		return codec, parsingFailed
+	}
+
+	ptSplit := strings.Split(split[0], ":")
+	if len(ptSplit) != 2 {
+		return codec, parsingFailed
+	}
+
+	ptInt, err := strconv.Atoi(ptSplit[1])
+	if err != nil {
+		return codec, parsingFailed
+	}
+
+	codec.PayloadType = uint8(ptInt)
+
+	split = strings.Split(split[1], "/")
+	codec.Name = split[0]
+	parts := len(split)
+	if parts > 1 {
+		rate, err := strconv.Atoi(split[1])
+		if err != nil {
+			return codec, parsingFailed
+		}
+		codec.ClockRate = uint32(rate)
+	}
+	if parts > 2 {
+		codec.EncodingParameters = split[2]
+	}
+
+	return codec, nil
+}
+
+func parseFmtp(fmtp string) (Codec, error) {
+	var codec Codec
+	parsingFailed := errors.New("could not extract codec from fmtp")
+
+	// a=fmtp:<format> <format specific parameters>
+	split := strings.Split(fmtp, " ")
+	if len(split) != 2 {
+		return codec, parsingFailed
+	}
+
+	formatParams := split[1]
+
+	split = strings.Split(split[0], ":")
+	if len(split) != 2 {
+		return codec, parsingFailed
+	}
+
+	ptInt, err := strconv.Atoi(split[1])
+	if err != nil {
+		return codec, parsingFailed
+	}
+
+	codec.PayloadType = uint8(ptInt)
+	codec.Fmtp = formatParams
+
+	return codec, nil
+}
+
+func mergeCodecs(codec Codec, codecs map[uint8]Codec) {
+	savedCodec := codecs[codec.PayloadType]
+
+	if savedCodec.PayloadType == 0 {
+		savedCodec.PayloadType = codec.PayloadType
+	}
+	if savedCodec.Name == "" {
+		savedCodec.Name = codec.Name
+	}
+	if savedCodec.ClockRate == 0 {
+		savedCodec.ClockRate = codec.ClockRate
+	}
+	if savedCodec.EncodingParameters == "" {
+		savedCodec.EncodingParameters = codec.EncodingParameters
+	}
+	if savedCodec.Fmtp == "" {
+		savedCodec.Fmtp = codec.Fmtp
+	}
+
+	codecs[savedCodec.PayloadType] = savedCodec
+}
+
+func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
+	codecs := make(map[uint8]Codec)
+
+	for _, m := range s.MediaDescriptions {
+		for _, a := range m.Attributes {
+			attr := *a.String()
+			if strings.HasPrefix(attr, "rtpmap:") {
+				codec, err := parseRtpmap(attr)
+				if err == nil {
+					mergeCodecs(codec, codecs)
+				}
+			} else if strings.HasPrefix(attr, "fmtp:") {
+				codec, err := parseFmtp(attr)
+				if err == nil {
+					mergeCodecs(codec, codecs)
+				}
+			}
+		}
+	}
+
+	return codecs
+}
+
+func equivalentFmtp(want, got string) bool {
+	wantSplit := strings.Split(want, ";")
+	gotSplit := strings.Split(got, ";")
+
+	if len(wantSplit) != len(gotSplit) {
+		return false
+	}
+
+	sort.Strings(wantSplit)
+	sort.Strings(gotSplit)
+
+	for i, wantPart := range wantSplit {
+		wantPart = strings.TrimSpace(wantPart)
+		gotPart := strings.TrimSpace(gotSplit[i])
+		if gotPart != wantPart {
+			return false
+		}
+	}
+
+	return true
+}
+
+func codecsMatch(wanted, got Codec) bool {
+	if wanted.Name != "" && wanted.Name != got.Name {
+		return false
+	}
+	if wanted.ClockRate != 0 && wanted.ClockRate != got.ClockRate {
+		return false
+	}
+	if wanted.EncodingParameters != "" && wanted.EncodingParameters != got.EncodingParameters {
+		return false
+	}
+	if wanted.Fmtp != "" && !equivalentFmtp(wanted.Fmtp, got.Fmtp) {
+		return false
+	}
+
+	return true
+}
+
+// GetPayloadTypeForCodec scans the SessionDescription for a codec that matches the provided codec
+// as closely as possible and returns its payload type
+func (s *SessionDescription) GetPayloadTypeForCodec(wanted Codec) (uint8, error) {
+	codecs := s.buildCodecMap()
+
+	for payloadType, codec := range codecs {
+		if codecsMatch(wanted, codec) {
+			return payloadType, nil
+		}
+	}
+
+	return 0, errors.New("codec not found")
 }
 
 type lexer struct {
