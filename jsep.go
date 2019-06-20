@@ -2,7 +2,6 @@ package sdp
 
 import (
 	"fmt"
-	"net"
 	"strconv"
 	"time"
 )
@@ -104,7 +103,7 @@ func NewJSEPMediaDescription(codecType string, codecPrefs []string) *MediaDescri
 			NetworkType: "IN",
 			AddressType: "IP4",
 			Address: &Address{
-				IP: net.ParseIP("0.0.0.0"),
+				Address: "0.0.0.0",
 			},
 		},
 	}

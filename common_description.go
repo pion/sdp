@@ -2,7 +2,6 @@ package sdp
 
 import (
 	"fmt"
-	"net"
 	"strconv"
 	"strings"
 )
@@ -36,14 +35,14 @@ func (c *ConnectionInformation) String() *string {
 
 // Address desribes a structured address token from within the "c=" field.
 type Address struct {
-	IP    net.IP
-	TTL   *int
-	Range *int
+	Address string
+	TTL     *int
+	Range   *int
 }
 
 func (c *Address) String() string {
 	var parts []string
-	parts = append(parts, c.IP.String())
+	parts = append(parts, c.Address)
 	if c.TTL != nil {
 		parts = append(parts, strconv.Itoa(*c.TTL))
 	}

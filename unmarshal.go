@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"io"
-	"net"
 	"net/url"
 	"strconv"
 )
@@ -581,40 +580,7 @@ func unmarshalConnectionInformation(value string) (*ConnectionInformation, error
 
 	var connAddr *Address
 	if len(fields) > 2 {
-		connAddr = &Address{}
-
-		parts := strings.Split(fields[2], "/")
-		connAddr.IP = net.ParseIP(parts[0])
-		if connAddr.IP == nil {
-			return nil, fmt.Errorf("sdp: invalid value `%v`", fields[2])
-		}
-
-		isIP6 := connAddr.IP.To4() == nil
-		if len(parts) > 1 {
-			val, err := strconv.ParseInt(parts[1], 10, 32)
-			if err != nil {
-				return nil, fmt.Errorf("sdp: invalid numeric value `%v`", fields[2])
-			}
-
-			if isIP6 {
-				multi := int(val)
-				connAddr.Range = &multi
-			} else {
-				ttl := int(val)
-				connAddr.TTL = &ttl
-			}
-		}
-
-		if len(parts) > 2 {
-			val, err := strconv.ParseInt(parts[2], 10, 32)
-			if err != nil {
-				return nil, fmt.Errorf("sdp: invalid numeric value `%v`", fields[2])
-			}
-
-			multi := int(val)
-			connAddr.Range = &multi
-		}
-
+		connAddr = &Address{Address: fields[2]}
 	}
 
 	return &ConnectionInformation{
