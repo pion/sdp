@@ -11,7 +11,7 @@ type ICECandidate struct {
 	Foundation          string
 	Component           uint16
 	Priority            uint32
-	IP                  string
+	Address             string
 	Protocol            string
 	Port                uint16
 	Typ                 string
@@ -44,7 +44,7 @@ func (c ICECandidate) marshalString() string {
 		c.Component,
 		c.Protocol,
 		c.Priority,
-		c.IP,
+		c.Address,
 		c.Port,
 		c.Typ)
 
@@ -90,8 +90,8 @@ func (c *ICECandidate) unmarshalString(raw string) error {
 	}
 	c.Priority = uint32(priority)
 
-	// IP
-	c.IP = split[4]
+	// Address
+	c.Address = split[4]
 
 	// Port
 	port, err := strconv.ParseUint(split[5], 10, 16)

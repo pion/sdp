@@ -1,7 +1,6 @@
 package sdp
 
 import (
-	"net"
 	"net/url"
 	"testing"
 )
@@ -60,8 +59,8 @@ func TestMarshalCanonical(t *testing.T) {
 			NetworkType: "IN",
 			AddressType: "IP4",
 			Address: &Address{
-				IP:  net.ParseIP("224.2.17.12"),
-				TTL: &(&struct{ x int }{127}).x,
+				Address: "224.2.17.12",
+				TTL:     &(&struct{ x int }{127}).x,
 			},
 		},
 		Bandwidth: []Bandwidth{
@@ -127,7 +126,7 @@ func TestMarshalCanonical(t *testing.T) {
 					NetworkType: "IN",
 					AddressType: "IP4",
 					Address: &Address{
-						IP: net.ParseIP("203.0.113.1"),
+						Address: "203.0.113.1",
 					},
 				},
 				Bandwidth: []Bandwidth{
