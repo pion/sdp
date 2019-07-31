@@ -1,6 +1,7 @@
 package sdp
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 )
@@ -78,4 +79,97 @@ func (m *MediaName) String() *string {
 		strings.Join(m.Formats, " "),
 	}, " ")
 	return &output
+}
+
+type RTCPFeedback struct {
+	Type string
+	Parameter string
+}
+// MediaFormat contains information corresponding to one m= line in SDP.
+// Most of these are source attributes as defined in RFC 5576
+type MediaFormat struct {
+	MediaType   string
+	PayloadType int
+	// a=rtpmap <payload type> <EncodingName>
+	// such as a=rtpmap 96 H264/90000
+	EncodingName string
+	// a=fmtp:<payload type> <format parameters string>
+	// a=fmtp:96 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=640c1f
+	Parameters string
+	// Array of rtcpfeeback attributes
+	// a=rtcp-fb:<payload type> <atttribute>
+	RTCPFeedback []RTCPFeedback
+}
+
+// MediFormats returns an array of MediaFormat structs, one
+// for each m= line of the MediaDescription
+func (md *MediaDescription) MediaFormats() ([]*MediaFormat, error) {
+	ret := make([]*MediaFormat, 0)              // the returned array
+	var formats = make(map[string]*MediaFormat) // k: payload type as string, v: *MediaFormats under construction
+	for _, fmt := range md.MediaName.Formats {
+		payloadType, err := strconv.Atoi(fmt)
+		if err != nil {
+			return nil, errors.New("format parse error")
+		}
+		mf := &MediaFormat{MediaType: md.MediaName.Media, PayloadType: payloadType}
+		formats[fmt] = mf
+		ret = append(ret, mf)
+	}
+	for _, a := range md.Attributes {
+		switch a.Key {
+		case "rtpmap":
+			splits := strings.Split(a.Value, " ")
+			if len(splits) != 2 {
+				return nil, errors.New("error parsing rtpmap line")
+			}
+			mf, ok := formats[splits[0]]
+			if !ok {
+				return nil, errors.New("unexpected payload type in rtpmap")
+			}
+			mf.EncodingName = splits[1]
+		case "fmtp":
+			splits := strings.Split(a.Value, " ")
+			if len(splits) != 2 {
+				return nil, errors.New("error parsing fmtp line")
+			}
+			mf, ok := formats[splits[0]]
+			if !ok {
+				return nil, errors.New("unexpected payload type in fmtp")
+			}
+			mf.Parameters = splits[1]
+		case "rtcp-fb":
+			splits := strings.Split(a.Value, " ")
+			if len(splits) < 2 {
+				return nil, errors.New("error parsing fmtp line")
+			}
+			mf, ok := formats[splits[0]]
+			if !ok {
+				return nil, errors.New("unexpected payload type in rtc-fp")
+			}
+			fb := RTCPFeedback{Type:splits[1]}
+			if len(splits) > 2 {
+				fb.Parameter = strings.Join(splits[2:], " ")
+			}
+			mf.RTCPFeedback = append(mf.RTCPFeedback, fb)
+		}
+	}
+	return ret, nil
+}
+
+// SameFormat compares one MediaFormat with another and returns
+// true if they match (excluding rtcp-fb lines)
+func (f *MediaFormat) SameFormat(format *MediaFormat) bool {
+	if format.PayloadType != f.PayloadType {
+		return false
+	}
+	if format.MediaType != f.MediaType {
+		return false
+	}
+	if format.Parameters != f.Parameters {
+		return false
+	}
+	if format.EncodingName != f.EncodingName {
+		return false
+	}
+	return true
 }
