@@ -15,11 +15,11 @@ func TestICECandidate(t *testing.T) {
 
 	for i, tc := range tt {
 		var parsed ICECandidate
-		err := parsed.unmarshalString(tc.str)
+		err := parsed.Unmarshal(tc.str)
 		if err != nil {
 			t.Error(err)
 		}
-		actual := parsed.marshalString()
+		actual := parsed.Marshal()
 		if tc.str != actual {
 			t.Errorf("ICE candidate test %d failed. Got:\n%s\nExpected:\n%s", i, actual, tc.str)
 		}
@@ -41,7 +41,7 @@ func TestICECandidateFailure(t *testing.T) {
 
 	for i, tc := range tt {
 		var parsed ICECandidate
-		err := parsed.unmarshalString(tc.str)
+		err := parsed.Unmarshal(tc.str)
 		if err == nil {
 			t.Errorf("ICE candidate failure test %d: expected error", i)
 		}
