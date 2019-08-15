@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 // SessionDescription is a a well-defined format for conveying sufficient
@@ -148,4 +149,15 @@ type TimeZone struct {
 
 func (z *TimeZone) String() string {
 	return strconv.FormatUint(z.AdjustmentTime, 10) + " " + strconv.FormatInt(z.Offset, 10)
+}
+
+func (s *SessionDescription) GetBundledMids() []string {
+	groupValue, found := s.Attribute("group")
+
+	if !found {
+		return []string{}
+	}
+
+	return strings.Fields(groupValue)
+
 }
