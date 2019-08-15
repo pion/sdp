@@ -79,3 +79,14 @@ func (m *MediaName) String() *string {
 	}, " ")
 	return &output
 }
+
+// GetMidValue returns MID value for a media section in SDP
+func (s *MediaDescription) GetMidValue() string {
+	value, found := s.Attribute("mid")
+
+	if found {
+		return value
+	}
+
+	return ""
+}

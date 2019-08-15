@@ -26,6 +26,25 @@ type ICECandidateAttribute struct {
 	Value string
 }
 
+// https://tools.ietf.org/id/draft-ietf-mmusic-ice-sip-sdp-14.html
+
+// ICEMediaParameters media-level ICE parameters
+type ICEMediaParameters struct {
+	UserFragment string
+	Password     string
+	Mismatch     bool
+	Pacing       uint16
+	Options      string
+}
+
+// ICESessionParameters session-level ICE parameters
+type ICESessionParameters struct {
+	UserFragment string //a=ice-ufrag:8hhY
+	Password     string //a=ice-pwd:asd88fgpdd777uzjYhagZg
+	Lite         bool   //a=ice-lite
+	Options      string //a=ice-options:ice2
+}
+
 // https://tools.ietf.org/html/draft-ietf-mmusic-ice-sip-sdp-24#section-4.1
 // candidate-attribute   = "candidate" ":" foundation SP component-id SP
 //                            transport SP
@@ -140,4 +159,88 @@ func (c *ICECandidate) Unmarshal(raw string) error {
 	}
 
 	return nil
+}
+
+// GetICEParams extracts session-level ICE parameters
+func (s *SessionDescription) GetICEParams() ICESessionParameters {
+	ret := ICESessionParameters{}
+
+	var value string
+	var found bool
+
+	_, found = s.Attribute("ice-lite")
+	if found {
+		ret.Lite = true
+	} else {
+		ret.Lite = false
+	}
+	value, found = s.Attribute("ice-ufrag")
+	if found {
+		ret.UserFragment = value
+	} else {
+		ret.UserFragment = ""
+	}
+	value, found = s.Attribute("ice-pwd")
+	if found {
+		ret.Password = value
+	} else {
+		ret.Password = ""
+	}
+	value, found = s.Attribute("ice-options")
+	if found {
+		ret.Options = value
+	} else {
+		ret.Options = ""
+	}
+
+	return ret
+}
+
+// GetICEParams extracts media-section-level ICE parameters
+func (s *MediaDescription) GetICEParams() ICEMediaParameters {
+	ret := ICEMediaParameters{}
+
+	var value string
+	var found bool
+
+	_, found = s.Attribute("ice-mismatch")
+	if found {
+		ret.Mismatch = true
+	} else {
+		ret.Mismatch = false
+	}
+	value, found = s.Attribute("ice-ufrag")
+	if found {
+		ret.UserFragment = value
+	} else {
+		ret.UserFragment = ""
+	}
+	value, found = s.Attribute("ice-pacing")
+	if found {
+		intval, err := strconv.Atoi(value)
+
+		if err != nil {
+			//todo: proper logging here
+			ret.Pacing = 0
+		} else {
+			ret.Pacing = (uint16)(intval)
+		}
+
+	} else {
+		ret.UserFragment = ""
+	}
+	value, found = s.Attribute("ice-pwd")
+	if found {
+		ret.Password = value
+	} else {
+		ret.Password = ""
+	}
+	value, found = s.Attribute("ice-options")
+	if found {
+		ret.Options = value
+	} else {
+		ret.Options = ""
+	}
+
+	return ret
 }

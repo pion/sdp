@@ -41,6 +41,7 @@ Check out the **[contributing wiki](https://github.com/pion/webrtc/wiki/Contribu
 * [Michael MacDonald](https://github.com/mjmac)
 * [Max Hawkins](https://github.com/maxhawkins)
 * [mchlrhw](https://github.com/mchlrhw)
+* [Sergey Chikin](https://github.com/schikin)
 
 ### License
 MIT License - see [LICENSE](LICENSE) for full text
