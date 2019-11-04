@@ -431,7 +431,7 @@ func unmarshalProtocolVersion(l *lexer) (stateFn, error) {
 
 	version, err := strconv.ParseInt(value, 10, 32)
 	if err != nil {
-		return nil, fmt.Errorf("sdp: invalid numeric value `%v`", version)
+		return nil, fmt.Errorf("sdp: invalid numeric value `%v`", value)
 	}
 
 	// As off the latest draft of the rfc this value is required to be 0.

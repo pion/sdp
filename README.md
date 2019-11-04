@@ -42,6 +42,7 @@ Check out the **[contributing wiki](https://github.com/pion/webrtc/wiki/Contribu
 * [Max Hawkins](https://github.com/maxhawkins)
 * [mchlrhw](https://github.com/mchlrhw)
 * [Hugo Arregui](https://github.com/hugoArregui)
+* [Guilherme Souza](https://github.com/gqgs)
 
 ### License
 MIT License - see [LICENSE](LICENSE) for full text
