@@ -67,7 +67,7 @@ func (e *ExtMap) Unmarshal(raw string) error {
 
 //Marshal creates a string from an ExtMap
 func (e *ExtMap) Marshal() string {
-	return attributeKey + e.Name() + ":" + e.string() + endline
+	return e.Name() + ":" + e.string()
 }
 
 func (e *ExtMap) string() string {
