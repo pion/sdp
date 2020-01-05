@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	endline      = "\r\n"
 	attributeKey = "a="
 )
 

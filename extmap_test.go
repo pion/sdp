@@ -1,6 +1,7 @@
 package sdp
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,5 +32,19 @@ func TestExtmap(t *testing.T) {
 	for _, u := range failingtests {
 		actual := ExtMap{}
 		assert.Error(t, actual.Unmarshal(u.parameter))
+	}
+}
+
+func TestTransportCCExtMap(t *testing.T) {
+	//a=extmap:<value>["/"<direction>] <URI> <extensionattributes>
+	//a=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+	uri, _ := url.Parse("http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01")
+	e := ExtMap{
+		Value: 3,
+		URI:   uri,
+	}
+
+	if e.Marshal() == "3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01" {
+		t.Error("TestTransportCC failed")
 	}
 }

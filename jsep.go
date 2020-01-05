@@ -2,6 +2,7 @@ package sdp
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 	"time"
 )
@@ -27,6 +28,16 @@ const (
 	SemanticTokenForwardErrorCorrection = "FEC"
 	SemanticTokenWebRTCMediaStreams     = "WMS"
 )
+
+// Constants for extmap key
+const (
+	ExtMapValueTransportCC = 3
+)
+
+// ExtMapURI is a map
+var ExtMapURI = map[int]string{
+	ExtMapValueTransportCC: "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01",
+}
 
 // API to match draft-ietf-rtcweb-jsep
 // Move to webrtc or its own package?
@@ -161,4 +172,19 @@ func (d *MediaDescription) WithCandidate(value string) *MediaDescription {
 // WithICECandidate adds an ICE candidate to the media description
 func (d *MediaDescription) WithICECandidate(c ICECandidate) *MediaDescription {
 	return d.WithValueAttribute("candidate", c.Marshal())
+}
+
+// WithExtMap adds an extmap to the media description
+func (d *MediaDescription) WithExtMap(e ExtMap) *MediaDescription {
+	return d.WithPropertyAttribute(e.Marshal())
+}
+
+// WithTransportCCExtMap adds an extmap to the media description
+func (d *MediaDescription) WithTransportCCExtMap() *MediaDescription {
+	uri, _ := url.Parse(ExtMapURI[ExtMapValueTransportCC])
+	e := ExtMap{
+		Value: ExtMapValueTransportCC,
+		URI:   uri,
+	}
+	return d.WithExtMap(e)
 }
