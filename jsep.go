@@ -34,8 +34,8 @@ const (
 	ExtMapValueTransportCC = 3
 )
 
-// ExtMapURI is a map
-var ExtMapURI = map[int]string{
+// extMapURI is a map
+var extMapURI = map[int]string{
 	ExtMapValueTransportCC: "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01",
 }
 
@@ -181,7 +181,7 @@ func (d *MediaDescription) WithExtMap(e ExtMap) *MediaDescription {
 
 // WithTransportCCExtMap adds an extmap to the media description
 func (d *MediaDescription) WithTransportCCExtMap() *MediaDescription {
-	uri, _ := url.Parse(ExtMapURI[ExtMapValueTransportCC])
+	uri, _ := url.Parse(extMapURI[ExtMapValueTransportCC])
 	e := ExtMap{
 		Value: ExtMapValueTransportCC,
 		URI:   uri,
