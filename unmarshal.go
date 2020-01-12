@@ -94,7 +94,6 @@ func (s *SessionDescription) Unmarshal(value []byte) error {
 		}
 	}
 	return nil
-
 }
 
 func s1(l *lexer) (stateFn, error) {

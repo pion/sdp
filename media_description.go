@@ -36,8 +36,8 @@ type MediaDescription struct {
 }
 
 // Attribute returns the value of an attribute and if it exists
-func (s *MediaDescription) Attribute(key string) (string, bool) {
-	for _, a := range s.Attributes {
+func (d *MediaDescription) Attribute(key string) (string, bool) {
+	for _, a := range d.Attributes {
 		if a.Key == key {
 			return a.Value, true
 		}
