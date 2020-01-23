@@ -72,6 +72,18 @@ const (
 	MediaConnectionInformationSDP = MediaNameSDP +
 		"c=IN IP4 203.0.113.1\r\n"
 
+	MediaDescriptionOutOfOrderSDP = MediaNameSDP +
+		"a=rtpmap:99 h263-1998/90000\r\n" +
+		"a=candidate:0 1 UDP 2113667327 203.0.113.1 54400 typ host\r\n" +
+		"c=IN IP4 203.0.113.1\r\n" +
+		"i=Vivamus a posuere nisl\r\n"
+
+	MediaDescriptionOutOfOrderSDPActual = MediaNameSDP +
+		"i=Vivamus a posuere nisl\r\n" +
+		"c=IN IP4 203.0.113.1\r\n" +
+		"a=rtpmap:99 h263-1998/90000\r\n" +
+		"a=candidate:0 1 UDP 2113667327 203.0.113.1 54400 typ host\r\n"
+
 	MediaBandwidthSDP = MediaNameSDP +
 		"b=X-YZ:128\r\n" +
 		"b=AS:12345\r\n"
@@ -112,8 +124,9 @@ const (
 
 func TestRoundTrip(t *testing.T) {
 	for _, test := range []struct {
-		Name string
-		SDP  string
+		Name   string
+		SDP    string
+		Actual string
 	}{
 		{
 			Name: "SessionInformation",
@@ -125,7 +138,7 @@ func TestRoundTrip(t *testing.T) {
 		},
 		{
 			Name: "EmailAddress",
-			SDP:  string(EmailAddressSDP),
+			SDP:  EmailAddressSDP,
 		},
 		{
 			Name: "PhoneNumber",
@@ -164,8 +177,9 @@ func TestRoundTrip(t *testing.T) {
 			SDP:  MediaConnectionInformationSDP,
 		},
 		{
-			Name: "MediaConnectionInformation",
-			SDP:  MediaConnectionInformationSDP,
+			Name:   "MediaDescriptionOutOfOrder",
+			SDP:    MediaDescriptionOutOfOrderSDP,
+			Actual: MediaDescriptionOutOfOrderSDPActual,
 		},
 		{
 			Name: "MediaBandwidth",
@@ -195,7 +209,11 @@ func TestRoundTrip(t *testing.T) {
 		if got, want := err, error(nil); got != want {
 			t.Fatalf("Marshal(): err=%v, want %v", got, want)
 		}
-		if got, want := string(actual), test.SDP; got != want {
+		want := test.SDP
+		if test.Actual != "" {
+			want = test.Actual
+		}
+		if got := string(actual); got != want {
 			t.Fatalf("Marshal(%s) = %q, want %q", test.Name, got, want)
 		}
 	}
