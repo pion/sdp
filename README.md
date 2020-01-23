@@ -45,6 +45,7 @@ Check out the **[contributing wiki](https://github.com/pion/webrtc/wiki/Contribu
 * [Guilherme Souza](https://github.com/gqgs)
 * [adwpc](https://github.com/adwpc) - *extmap add transport-cc*
 * [Atsushi Watanabe](https://github.com/at-wat)
+* [Luke S](https://github.com/encounter)
 
 ### License
 MIT License - see [LICENSE](LICENSE) for full text
