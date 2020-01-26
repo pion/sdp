@@ -1,6 +1,7 @@
 package sdp
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -25,6 +26,9 @@ func getTestSessionDescription() SessionDescription {
 					NewAttribute("rtpmap:121 VP9/90000", ""),
 					NewAttribute("rtpmap:126 H264/90000", ""),
 					NewAttribute("rtpmap:97 H264/90000", ""),
+					NewAttribute("rtcp-fb:97 ccm fir", ""),
+					NewAttribute("rtcp-fb:97 nack", ""),
+					NewAttribute("rtcp-fb:97 nack pli", ""),
 				},
 			},
 		},
@@ -118,10 +122,11 @@ func TestGetCodecForPayloadType(t *testing.T) {
 		{
 			PayloadType: 97,
 			Expected: Codec{
-				PayloadType: 97,
-				Name:        "H264",
-				ClockRate:   90000,
-				Fmtp:        "profile-level-id=42e01f;level-asymmetry-allowed=1",
+				PayloadType:  97,
+				Name:         "H264",
+				ClockRate:    90000,
+				Fmtp:         "profile-level-id=42e01f;level-asymmetry-allowed=1",
+				RTCPFeedback: []string{"ccm fir", "nack", "nack pli"},
 			},
 		},
 	} {
@@ -132,7 +137,7 @@ func TestGetCodecForPayloadType(t *testing.T) {
 			t.Fatalf("GetCodecForPayloadType(): err=%v, want=%v", got, want)
 		}
 
-		if actual != test.Expected {
+		if !reflect.DeepEqual(actual, test.Expected) {
 			t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", test.Expected, actual)
 		}
 	}

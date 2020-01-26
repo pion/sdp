@@ -61,6 +61,7 @@ type Codec struct {
 	ClockRate          uint32
 	EncodingParameters string
 	Fmtp               string
+	RTCPFeedback       []string
 }
 
 const (
@@ -68,7 +69,7 @@ const (
 )
 
 func (c Codec) String() string {
-	return fmt.Sprintf("%d %s/%d/%s (%s)", c.PayloadType, c.Name, c.ClockRate, c.EncodingParameters, c.Fmtp)
+	return fmt.Sprintf("%d %s/%d/%s (%s) [%s]", c.PayloadType, c.Name, c.ClockRate, c.EncodingParameters, c.Fmtp, strings.Join(c.RTCPFeedback, ", "))
 }
 
 func parseRtpmap(rtpmap string) (Codec, error) {
@@ -138,6 +139,32 @@ func parseFmtp(fmtp string) (Codec, error) {
 	return codec, nil
 }
 
+func parseRtcpFb(rtcpFb string) (Codec, error) {
+	var codec Codec
+	parsingFailed := errors.New("could not extract codec from rtcp-fb")
+
+	// a=ftcp-fb:<payload type> <RTCP feedback type> [<RTCP feedback parameter>]
+	split := strings.SplitN(rtcpFb, " ", 2)
+	if len(split) != 2 {
+		return codec, parsingFailed
+	}
+
+	ptSplit := strings.Split(split[0], ":")
+	if len(ptSplit) != 2 {
+		return codec, parsingFailed
+	}
+
+	ptInt, err := strconv.Atoi(ptSplit[1])
+	if err != nil {
+		return codec, parsingFailed
+	}
+
+	codec.PayloadType = uint8(ptInt)
+	codec.RTCPFeedback = append(codec.RTCPFeedback, split[1])
+
+	return codec, nil
+}
+
 func mergeCodecs(codec Codec, codecs map[uint8]Codec) {
 	savedCodec := codecs[codec.PayloadType]
 
@@ -156,6 +183,7 @@ func mergeCodecs(codec Codec, codecs map[uint8]Codec) {
 	if savedCodec.Fmtp == "" {
 		savedCodec.Fmtp = codec.Fmtp
 	}
+	savedCodec.RTCPFeedback = append(savedCodec.RTCPFeedback, codec.RTCPFeedback...)
 
 	codecs[savedCodec.PayloadType] = savedCodec
 }
@@ -173,6 +201,11 @@ func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
 				}
 			} else if strings.HasPrefix(attr, "fmtp:") {
 				codec, err := parseFmtp(attr)
+				if err == nil {
+					mergeCodecs(codec, codecs)
+				}
+			} else if strings.HasPrefix(attr, "rtcp-fb:") {
+				codec, err := parseRtcpFb(attr)
 				if err == nil {
 					mergeCodecs(codec, codecs)
 				}
