@@ -93,7 +93,10 @@ const (
 
 	MediaAttributesSDP = MediaNameSDP +
 		"a=rtpmap:99 h263-1998/90000\r\n" +
-		"a=candidate:0 1 UDP 2113667327 203.0.113.1 54400 typ host\r\n"
+		"a=candidate:0 1 UDP 2113667327 203.0.113.1 54400 typ host\r\n" +
+		"a=rtcp-fb:97 ccm fir\r\n" +
+		"a=rtcp-fb:97 nack\r\n" +
+		"a=rtcp-fb:97 nack pli\r\n"
 
 	CanonicalUnmarshalSDP = "v=0\r\n" +
 		"o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5\r\n" +
