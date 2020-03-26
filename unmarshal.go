@@ -55,7 +55,11 @@ import (
 // In order to generate the following state table and draw subsequent
 // deterministic finite-state automota ("DFA") the following regex was used to
 // derive the DFA:
-// 		vosi?u?e?p?c?b*(tr*)+z?k?a*(mi?c?b*k?a*)*
+//    vosi?u?e?p?c?b*(tr*)+z?k?a*(mi?c?b*k?a*)*
+// possible place and state to exit:
+//                    **   * * *  ** * * * *
+//                    99   1 1 1  11 1 1 1 1
+//                         3 1 1  26 5 5 4 4
 //
 // Please pay close attention to the `k`, and `a` parsing states. In the table
 // below in order to distinguish between the states belonging to the media
