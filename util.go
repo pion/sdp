@@ -289,34 +289,41 @@ type lexer struct {
 type stateFn func(*lexer) (stateFn, error)
 
 func readType(input *bufio.Reader) (string, error) {
-	key, err := input.ReadString('=')
-	if err != nil {
-		return key, err
-	}
+	for {
+		b, err := input.ReadByte()
+		if err != nil {
+			return "", err
+		}
+		if b == '\n' || b == '\r' {
+			continue
+		}
+		if err = input.UnreadByte(); err != nil {
+			return "", err
+		}
 
-	if len(key) != 2 {
-		return key, fmt.Errorf("SyntaxError: %v", key)
-	}
+		key, err := input.ReadString('=')
+		if err != nil {
+			return key, err
+		}
 
-	return key, nil
+		switch len(key) {
+		case 2:
+			return key, nil
+		default:
+			return key, fmt.Errorf("SyntaxError: %v", strconv.Quote(key))
+		}
+	}
 }
 
 func readValue(input *bufio.Reader) (string, error) {
-	line, err := input.ReadString('\n')
+	lineBytes, _, err := input.ReadLine()
+	line := string(lineBytes)
 	if err != nil && err != io.EOF {
 		return line, err
 	}
 
 	if len(line) == 0 {
 		return line, io.EOF
-	}
-
-	if line[len(line)-1] == '\n' {
-		drop := 1
-		if len(line) > 1 && line[len(line)-2] == '\r' {
-			drop = 2
-		}
-		line = line[:len(line)-drop]
 	}
 
 	return line, nil
