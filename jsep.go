@@ -13,6 +13,7 @@ const (
 	AttrKeyGroup           = "group"
 	AttrKeySSRC            = "ssrc"
 	AttrKeySSRCGroup       = "ssrc-group"
+	AttrKeyMsid            = "msid"
 	AttrKeyMsidSemantic    = "msid-semantic"
 	AttrKeyConnectionSetup = "setup"
 	AttrKeyMID             = "mid"
