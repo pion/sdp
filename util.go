@@ -239,7 +239,7 @@ func equivalentFmtp(want, got string) bool {
 }
 
 func codecsMatch(wanted, got Codec) bool {
-	if wanted.Name != "" && wanted.Name != got.Name {
+	if wanted.Name != "" && !strings.EqualFold(wanted.Name, got.Name) {
 		return false
 	}
 	if wanted.ClockRate != 0 && wanted.ClockRate != got.ClockRate {

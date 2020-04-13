@@ -47,6 +47,7 @@ Check out the **[contributing wiki](https://github.com/pion/webrtc/wiki/Contribu
 * [Atsushi Watanabe](https://github.com/at-wat)
 * [Luke S](https://github.com/encounter)
 * [Jerko Steiner](https://github.com/jeremija)
+* [Roman Romanenko](https://github.com/r-novel)
 
 ### License
 MIT License - see [LICENSE](LICENSE) for full text
