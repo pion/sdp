@@ -601,9 +601,9 @@ func unmarshalConnectionInformation(value string) (*ConnectionInformation, error
 		return nil, fmt.Errorf("sdp: invalid value `%v`", fields[1])
 	}
 
-	var connAddr *Address
+	connAddr := new(Address)
 	if len(fields) > 2 {
-		connAddr = &Address{Address: fields[2]}
+		connAddr.Address = fields[2]
 	}
 
 	return &ConnectionInformation{

@@ -346,3 +346,16 @@ func TestUnmarshalTimeZones(t *testing.T) {
 		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", TimeZonesSDPExpected, actual)
 	}
 }
+
+func TestUnmarshalNonNilAddress(t *testing.T) {
+	in := "v=0\no=0 0 0 IN IP4 0\ns=0\nc=IN IP4\nt=0 0"
+	var sd SessionDescription
+	err := sd.Unmarshal([]byte(in))
+	if err != nil {
+		t.Fatalf("failed to unmarshal %q", in)
+	}
+	_, err = sd.Marshal()
+	if err != nil {
+		t.Errorf("failed to marshal unmarshalled %q", in)
+	}
+}
