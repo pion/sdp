@@ -86,9 +86,13 @@ import (
 // |   s16  |    |    14 |    |     |    |  15 |   |    | 12 |   |   |     |   |   |    |   |    |
 // +--------+----+-------+----+-----+----+-----+---+----+----+---+---+-----+---+---+----+---+----+
 func (s *SessionDescription) Unmarshal(value []byte) error {
+	bufsz := 4096
+	if len(value) < bufsz {
+		bufsz = len(value)
+	}
 	l := &lexer{
 		desc:  s,
-		input: bufio.NewReader(bytes.NewReader(value)),
+		input: bufio.NewReaderSize(bytes.NewReader(value), bufsz),
 	}
 	for state := s1; state != nil; {
 		var err error
