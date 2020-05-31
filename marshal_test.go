@@ -165,3 +165,19 @@ func TestMarshalCanonical(t *testing.T) {
 		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", CanonicalMarshalSDP, actual)
 	}
 }
+
+var sink []byte
+
+func BenchmarkMarshal(b *testing.B) {
+	var sd SessionDescription
+	err := sd.Unmarshal([]byte(CanonicalUnmarshalSDP))
+	if err != nil {
+		b.Fatal(err)
+	}
+	for i := 0; i < b.N; i++ {
+		sink, err = sd.Marshal()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
