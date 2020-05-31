@@ -348,15 +348,18 @@ func TestUnmarshalTimeZones(t *testing.T) {
 }
 
 func TestUnmarshalNonNilAddress(t *testing.T) {
-	in := "v=0\no=0 0 0 IN IP4 0\ns=0\nc=IN IP4\nt=0 0"
+	in := "v=0\r\no=0 0 0 IN IP4 0\r\ns=0\r\nc=IN IP4\r\nt=0 0\r\n"
 	var sd SessionDescription
 	err := sd.Unmarshal([]byte(in))
 	if err != nil {
 		t.Fatalf("failed to unmarshal %q", in)
 	}
-	_, err = sd.Marshal()
+	out, err := sd.Marshal()
 	if err != nil {
 		t.Errorf("failed to marshal unmarshalled %q", in)
+	}
+	if string(out) != in {
+		t.Errorf("round trip = %q want %q", out, in)
 	}
 }
 

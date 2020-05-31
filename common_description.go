@@ -1,7 +1,6 @@
 package sdp
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -24,13 +23,13 @@ type ConnectionInformation struct {
 }
 
 func (c *ConnectionInformation) String() *string {
-	output := fmt.Sprintf(
-		"%v %v %v",
-		c.NetworkType,
-		c.AddressType,
-		c.Address.String(),
-	)
-	return &output
+	parts := []string{c.NetworkType, c.AddressType, c.Address.String()}
+	// Trim off Address if it is empty.
+	if parts[2] == "" {
+		parts = parts[:2]
+	}
+	out := strings.Join(parts, " ")
+	return &out
 }
 
 // Address desribes a structured address token from within the "c=" field.
