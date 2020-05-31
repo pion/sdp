@@ -359,3 +359,14 @@ func TestUnmarshalNonNilAddress(t *testing.T) {
 		t.Errorf("failed to marshal unmarshalled %q", in)
 	}
 }
+
+func BenchmarkUnmarshal(b *testing.B) {
+	raw := []byte(CanonicalUnmarshalSDP)
+	for i := 0; i < b.N; i++ {
+		var sd SessionDescription
+		err := sd.Unmarshal(raw)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
