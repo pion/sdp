@@ -24,6 +24,7 @@ const (
 	AttrKeyRecvOnly        = "recvonly"
 	AttrKeySendOnly        = "sendonly"
 	AttrKeySendRecv        = "sendrecv"
+	AttrKeyExtMap          = "extmap"
 )
 
 // Constants for semantic tokens used in JSEP
