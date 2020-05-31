@@ -36,40 +36,40 @@ import (
 //    k=* (encryption key)
 //    a=* (zero or more media attribute lines)
 func (s *SessionDescription) Marshal() ([]byte, error) {
-	var raw string
-	raw += keyValueBuild("v=", s.Version.String())
-	raw += keyValueBuild("o=", s.Origin.String())
-	raw += keyValueBuild("s=", s.SessionName.String())
+	m := new(marshaller)
+	m.addKeyValue("v=", s.Version.String())
+	m.addKeyValue("o=", s.Origin.String())
+	m.addKeyValue("s=", s.SessionName.String())
 
 	if s.SessionInformation != nil {
-		raw += keyValueBuild("i=", s.SessionInformation.String())
+		m.addKeyValue("i=", s.SessionInformation.String())
 	}
 
 	if s.URI != nil {
 		uri := s.URI.String()
-		raw += keyValueBuild("u=", &uri)
+		m.addKeyValue("u=", &uri)
 	}
 
 	if s.EmailAddress != nil {
-		raw += keyValueBuild("e=", s.EmailAddress.String())
+		m.addKeyValue("e=", s.EmailAddress.String())
 	}
 
 	if s.PhoneNumber != nil {
-		raw += keyValueBuild("p=", s.PhoneNumber.String())
+		m.addKeyValue("p=", s.PhoneNumber.String())
 	}
 
 	if s.ConnectionInformation != nil {
-		raw += keyValueBuild("c=", s.ConnectionInformation.String())
+		m.addKeyValue("c=", s.ConnectionInformation.String())
 	}
 
 	for _, b := range s.Bandwidth {
-		raw += keyValueBuild("b=", b.String())
+		m.addKeyValue("b=", b.String())
 	}
 
 	for _, td := range s.TimeDescriptions {
-		raw += keyValueBuild("t=", td.Timing.String())
+		m.addKeyValue("t=", td.Timing.String())
 		for _, r := range td.RepeatTimes {
-			raw += keyValueBuild("r=", r.String())
+			m.addKeyValue("r=", r.String())
 		}
 	}
 
@@ -80,40 +80,58 @@ func (s *SessionDescription) Marshal() ([]byte, error) {
 
 	if len(rawTimeZones) > 0 {
 		timeZones := strings.Join(rawTimeZones, " ")
-		raw += keyValueBuild("z=", &timeZones)
+		m.addKeyValue("z=", &timeZones)
 	}
 
 	if s.EncryptionKey != nil {
-		raw += keyValueBuild("k=", s.EncryptionKey.String())
+		m.addKeyValue("k=", s.EncryptionKey.String())
 	}
 
 	for _, a := range s.Attributes {
-		raw += keyValueBuild("a=", a.String())
+		m.addKeyValue("a=", a.String())
 	}
 
 	for _, md := range s.MediaDescriptions {
-		raw += keyValueBuild("m=", md.MediaName.String())
+		m.addKeyValue("m=", md.MediaName.String())
 
 		if md.MediaTitle != nil {
-			raw += keyValueBuild("i=", md.MediaTitle.String())
+			m.addKeyValue("i=", md.MediaTitle.String())
 		}
 
 		if md.ConnectionInformation != nil {
-			raw += keyValueBuild("c=", md.ConnectionInformation.String())
+			m.addKeyValue("c=", md.ConnectionInformation.String())
 		}
 
 		for _, b := range md.Bandwidth {
-			raw += keyValueBuild("b=", b.String())
+			m.addKeyValue("b=", b.String())
 		}
 
 		if md.EncryptionKey != nil {
-			raw += keyValueBuild("k=", md.EncryptionKey.String())
+			m.addKeyValue("k=", md.EncryptionKey.String())
 		}
 
 		for _, a := range md.Attributes {
-			raw += keyValueBuild("a=", a.String())
+			m.addKeyValue("a=", a.String())
 		}
 	}
 
-	return []byte(raw), nil
+	return m.bytes(), nil
+}
+
+// marshaller contains state during marshaling.
+type marshaller struct {
+	buf []byte
+}
+
+func (m *marshaller) addKeyValue(key string, value *string) {
+	if value == nil {
+		return
+	}
+	m.buf = append(m.buf, key...)
+	m.buf = append(m.buf, *value...)
+	m.buf = append(m.buf, '\r', '\n')
+}
+
+func (m *marshaller) bytes() []byte {
+	return m.buf
 }
