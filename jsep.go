@@ -139,6 +139,11 @@ func (d *MediaDescription) WithValueAttribute(key, value string) *MediaDescripti
 	return d
 }
 
+// WithFingerprint adds a fingerprint to the media description
+func (d *MediaDescription) WithFingerprint(algorithm, value string) *MediaDescription {
+	return d.WithValueAttribute("fingerprint", algorithm+" "+value)
+}
+
 // WithICECredentials adds ICE credentials to the media description
 func (d *MediaDescription) WithICECredentials(username, password string) *MediaDescription {
 	return d.
