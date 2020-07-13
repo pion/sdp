@@ -142,3 +142,29 @@ func TestGetCodecForPayloadType(t *testing.T) {
 		}
 	}
 }
+
+func TestNewSessionID(t *testing.T) {
+	min := uint64(0x7FFFFFFFFFFFFFFF)
+	max := uint64(0)
+	for i := 0; i < 10000; i++ {
+		r, err := newSessionID()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if r > (1<<63)-1 {
+			t.Fatalf("Session ID must be less than 2**64-1, got %d", r)
+		}
+		if r < min {
+			min = r
+		}
+		if r > max {
+			max = r
+		}
+	}
+	if min > 0x1000000000000000 {
+		t.Error("Value around lower boundary was not generated")
+	}
+	if max < 0x7000000000000000 {
+		t.Error("Value around upper boundary was not generated")
+	}
+}

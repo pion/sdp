@@ -5,12 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"sort"
 	"strconv"
 	"strings"
 
-	"time"
+	"github.com/pion/randutil"
 )
 
 const (
@@ -49,9 +48,13 @@ func (t ConnectionRole) String() string {
 	}
 }
 
-func newSessionID() uint64 {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	return uint64(r.Uint32()*2) >> 2
+func newSessionID() (uint64, error) {
+	// https://tools.ietf.org/html/draft-ietf-rtcweb-jsep-26#section-5.2.1
+	// Session ID is recommended to be constructed by generating a 64-bit
+	// quantity with the highest bit set to zero and the remaining 63-bits
+	// being cryptographically random.
+	id, err := randutil.CryptoUint64()
+	return id & (^(uint64(1) << 63)), err
 }
 
 // Codec represents a codec
