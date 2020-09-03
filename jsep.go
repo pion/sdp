@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/pion/ice/v2"
 )
 
 // Constants for SDP attributes used in JSEP
@@ -189,7 +191,7 @@ func (d *MediaDescription) WithCandidate(value string) *MediaDescription {
 }
 
 // WithICECandidate adds an ICE candidate to the media description
-func (d *MediaDescription) WithICECandidate(c ICECandidate) *MediaDescription {
+func (d *MediaDescription) WithICECandidate(c ice.ICECandidate) *MediaDescription {
 	return d.WithValueAttribute("candidate", c.Marshal())
 }
 

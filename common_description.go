@@ -3,6 +3,8 @@ package sdp
 import (
 	"strconv"
 	"strings"
+
+	"github.com/pion/ice/v2"
 )
 
 // Information describes the "i=" field which provides textual information
@@ -114,8 +116,8 @@ func (a *Attribute) IsICECandidate() bool {
 }
 
 // ToICECandidate parses the attribute as an ICE Candidate.
-func (a *Attribute) ToICECandidate() (ICECandidate, error) {
-	var parsed ICECandidate
+func (a *Attribute) ToICECandidate() (ice.ICECandidate, error) {
+	var parsed ice.ICECandidate
 	err := parsed.Unmarshal(a.Value)
 	return parsed, err
 }
