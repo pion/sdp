@@ -188,11 +188,6 @@ func (d *MediaDescription) WithCandidate(value string) *MediaDescription {
 	return d.WithValueAttribute("candidate", value)
 }
 
-// WithICECandidate adds an ICE candidate to the media description
-func (d *MediaDescription) WithICECandidate(c ICECandidate) *MediaDescription {
-	return d.WithValueAttribute("candidate", c.Marshal())
-}
-
 // WithExtMap adds an extmap to the media description
 func (d *MediaDescription) WithExtMap(e ExtMap) *MediaDescription {
 	return d.WithPropertyAttribute(e.Marshal())

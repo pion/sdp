@@ -112,10 +112,3 @@ func (a *Attribute) String() *string {
 func (a *Attribute) IsICECandidate() bool {
 	return a.Key == "candidate"
 }
-
-// ToICECandidate parses the attribute as an ICE Candidate.
-func (a *Attribute) ToICECandidate() (ICECandidate, error) {
-	var parsed ICECandidate
-	err := parsed.Unmarshal(a.Value)
-	return parsed, err
-}
