@@ -5,8 +5,6 @@ import (
 	"net/url"
 	"strconv"
 	"time"
-
-	"github.com/pion/ice/v2"
 )
 
 // Constants for SDP attributes used in JSEP
@@ -188,11 +186,6 @@ func (d *MediaDescription) WithMediaSource(ssrc uint32, cname, streamLabel, labe
 // Deprecated: use WithICECandidate instead
 func (d *MediaDescription) WithCandidate(value string) *MediaDescription {
 	return d.WithValueAttribute("candidate", value)
-}
-
-// WithICECandidate adds an ICE candidate to the media description
-func (d *MediaDescription) WithICECandidate(c ice.ICECandidate) *MediaDescription {
-	return d.WithValueAttribute("candidate", c.Marshal())
 }
 
 // WithExtMap adds an extmap to the media description
