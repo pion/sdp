@@ -49,6 +49,7 @@ Check out the **[contributing wiki](https://github.com/pion/webrtc/wiki/Contribu
 * [Jerko Steiner](https://github.com/jeremija)
 * [Roman Romanenko](https://github.com/r-novel)
 * [Jason Brady](https://github.com/jbrady42)
+* [Kory Miller](https://github.com/jbrady42/korymiller1489)
 
 ### License
 MIT License - see [LICENSE](LICENSE) for full text
