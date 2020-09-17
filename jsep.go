@@ -40,9 +40,10 @@ const (
 	ExtMapValueTransportCC = 3
 )
 
-// extMapURI is a map
-var extMapURI = map[int]string{
-	ExtMapValueTransportCC: "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01",
+func extMapURI() map[int]string {
+	return map[int]string{
+		ExtMapValueTransportCC: "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01",
+	}
 }
 
 // API to match draft-ietf-rtcweb-jsep
@@ -117,8 +118,7 @@ func (s *SessionDescription) WithMedia(md *MediaDescription) *SessionDescription
 // NewJSEPMediaDescription creates a new MediaName with
 // some settings that are required by the JSEP spec.
 func NewJSEPMediaDescription(codecType string, codecPrefs []string) *MediaDescription {
-	// TODO: handle codecPrefs
-	d := &MediaDescription{
+	return &MediaDescription{
 		MediaName: MediaName{
 			Media:  codecType,
 			Port:   RangedPort{Value: 9},
@@ -132,7 +132,6 @@ func NewJSEPMediaDescription(codecType string, codecPrefs []string) *MediaDescri
 			},
 		},
 	}
-	return d
 }
 
 // WithPropertyAttribute adds a property attribute 'a=key' to the media description
@@ -164,7 +163,7 @@ func (d *MediaDescription) WithCodec(payloadType uint8, name string, clockrate u
 	d.MediaName.Formats = append(d.MediaName.Formats, strconv.Itoa(int(payloadType)))
 	rtpmap := fmt.Sprintf("%d %s/%d", payloadType, name, clockrate)
 	if channels > 0 {
-		rtpmap = rtpmap + fmt.Sprintf("/%d", channels)
+		rtpmap += fmt.Sprintf("/%d", channels)
 	}
 	d.WithValueAttribute("rtpmap", rtpmap)
 	if fmtp != "" {
@@ -195,7 +194,7 @@ func (d *MediaDescription) WithExtMap(e ExtMap) *MediaDescription {
 
 // WithTransportCCExtMap adds an extmap to the media description
 func (d *MediaDescription) WithTransportCCExtMap() *MediaDescription {
-	uri, _ := url.Parse(extMapURI[ExtMapValueTransportCC])
+	uri, _ := url.Parse(extMapURI()[ExtMapValueTransportCC])
 	e := ExtMap{
 		Value: ExtMapValueTransportCC,
 		URI:   uri,

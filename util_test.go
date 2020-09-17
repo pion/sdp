@@ -1,6 +1,7 @@
 package sdp
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 )
@@ -77,7 +78,7 @@ func TestGetPayloadTypeForVP8(t *testing.T) {
 		sd := getTestSessionDescription()
 
 		actual, err := sd.GetPayloadTypeForCodec(test.Codec)
-		if got, want := err, error(nil); got != want {
+		if got, want := err, error(nil); !errors.Is(got, want) {
 			t.Fatalf("GetPayloadTypeForCodec(): err=%v, want=%v", got, want)
 		}
 
@@ -133,7 +134,7 @@ func TestGetCodecForPayloadType(t *testing.T) {
 		sd := getTestSessionDescription()
 
 		actual, err := sd.GetCodecForPayloadType(test.PayloadType)
-		if got, want := err, error(nil); got != want {
+		if got, want := err, error(nil); !errors.Is(got, want) {
 			t.Fatalf("GetCodecForPayloadType(): err=%v, want=%v", got, want)
 		}
 

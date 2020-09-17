@@ -16,6 +16,15 @@ const (
 	attributeKey = "a="
 )
 
+var (
+	errExtractCodecRtpmap  = errors.New("could not extract codec from rtpmap")
+	errExtractCodecFmtp    = errors.New("could not extract codec from fmtp")
+	errExtractCodecRtcpFb  = errors.New("could not extract codec from rtcp-fb")
+	errPayloadTypeNotFound = errors.New("payload type not found")
+	errCodecNotFound       = errors.New("codec not found")
+	errSyntaxError         = errors.New("SyntaxError")
+)
+
 // ConnectionRole indicates which of the end points should initiate the connection establishment
 type ConnectionRole int
 
@@ -77,7 +86,7 @@ func (c Codec) String() string {
 
 func parseRtpmap(rtpmap string) (Codec, error) {
 	var codec Codec
-	parsingFailed := errors.New("could not extract codec from rtpmap")
+	parsingFailed := errExtractCodecRtpmap
 
 	// a=rtpmap:<payload type> <encoding name>/<clock rate>[/<encoding parameters>]
 	split := strings.Split(rtpmap, " ")
@@ -116,7 +125,7 @@ func parseRtpmap(rtpmap string) (Codec, error) {
 
 func parseFmtp(fmtp string) (Codec, error) {
 	var codec Codec
-	parsingFailed := errors.New("could not extract codec from fmtp")
+	parsingFailed := errExtractCodecFmtp
 
 	// a=fmtp:<format> <format specific parameters>
 	split := strings.Split(fmtp, " ")
@@ -144,7 +153,7 @@ func parseFmtp(fmtp string) (Codec, error) {
 
 func parseRtcpFb(rtcpFb string) (Codec, error) {
 	var codec Codec
-	parsingFailed := errors.New("could not extract codec from rtcp-fb")
+	parsingFailed := errExtractCodecRtcpFb
 
 	// a=ftcp-fb:<payload type> <RTCP feedback type> [<RTCP feedback parameter>]
 	split := strings.SplitN(rtcpFb, " ", 2)
@@ -197,17 +206,18 @@ func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
 	for _, m := range s.MediaDescriptions {
 		for _, a := range m.Attributes {
 			attr := *a.String()
-			if strings.HasPrefix(attr, "rtpmap:") {
+			switch {
+			case strings.HasPrefix(attr, "rtpmap:"):
 				codec, err := parseRtpmap(attr)
 				if err == nil {
 					mergeCodecs(codec, codecs)
 				}
-			} else if strings.HasPrefix(attr, "fmtp:") {
+			case strings.HasPrefix(attr, "fmtp:"):
 				codec, err := parseFmtp(attr)
 				if err == nil {
 					mergeCodecs(codec, codecs)
 				}
-			} else if strings.HasPrefix(attr, "rtcp-fb:") {
+			case strings.HasPrefix(attr, "rtcp-fb:"):
 				codec, err := parseRtcpFb(attr)
 				if err == nil {
 					mergeCodecs(codec, codecs)
@@ -267,7 +277,7 @@ func (s *SessionDescription) GetCodecForPayloadType(payloadType uint8) (Codec, e
 		return codec, nil
 	}
 
-	return codec, errors.New("payload type not found")
+	return codec, errPayloadTypeNotFound
 }
 
 // GetPayloadTypeForCodec scans the SessionDescription for a codec that matches the provided codec
@@ -281,7 +291,7 @@ func (s *SessionDescription) GetPayloadTypeForCodec(wanted Codec) (uint8, error)
 		}
 	}
 
-	return 0, errors.New("codec not found")
+	return 0, errCodecNotFound
 }
 
 type lexer struct {
@@ -313,7 +323,7 @@ func readType(input *bufio.Reader) (string, error) {
 		case 2:
 			return key, nil
 		default:
-			return key, fmt.Errorf("SyntaxError: %v", strconv.Quote(key))
+			return key, fmt.Errorf("%w: %v", errSyntaxError, strconv.Quote(key))
 		}
 	}
 }
