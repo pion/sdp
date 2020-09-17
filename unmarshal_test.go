@@ -1,6 +1,7 @@
 package sdp
 
 import (
+	"errors"
 	"strconv"
 	"testing"
 )
@@ -296,12 +297,12 @@ func TestRoundTrip(t *testing.T) {
 			sd := &SessionDescription{}
 
 			err := sd.Unmarshal([]byte(test.SDP))
-			if got, want := err, error(nil); got != want {
+			if got, want := err, error(nil); !errors.Is(got, want) {
 				t.Fatalf("Unmarshal:\nerr=%v\nwant=%v", got, want)
 			}
 
 			actual, err := sd.Marshal()
-			if got, want := err, error(nil); got != want {
+			if got, want := err, error(nil); !errors.Is(got, want) {
 				t.Fatalf("Marshal:\nerr=%v\nwant=%v", got, want)
 			}
 			want := test.SDP
@@ -324,7 +325,7 @@ func TestUnmarshalRepeatTimes(t *testing.T) {
 	}
 
 	actual, err := sd.Marshal()
-	if got, want := err, error(nil); got != want {
+	if got, want := err, error(nil); !errors.Is(got, want) {
 		t.Fatalf("Marshal(): err=%v, want %v", got, want)
 	}
 	if string(actual) != RepeatTimesSDPExpected {
@@ -339,7 +340,7 @@ func TestUnmarshalTimeZones(t *testing.T) {
 	}
 
 	actual, err := sd.Marshal()
-	if got, want := err, error(nil); got != want {
+	if got, want := err, error(nil); !errors.Is(got, want) {
 		t.Fatalf("Marshal(): err=%v, want %v", got, want)
 	}
 	if string(actual) != TimeZonesSDPExpected {

@@ -1,6 +1,7 @@
 package sdp
 
 import (
+	"errors"
 	"net/url"
 	"testing"
 )
@@ -158,7 +159,7 @@ func TestMarshalCanonical(t *testing.T) {
 	}
 
 	actual, err := sd.Marshal()
-	if got, want := err, error(nil); got != want {
+	if got, want := err, error(nil); !errors.Is(got, want) {
 		t.Fatalf("Marshal(): err=%v, want %v", got, want)
 	}
 	if string(actual) != CanonicalMarshalSDP {
@@ -166,7 +167,7 @@ func TestMarshalCanonical(t *testing.T) {
 	}
 }
 
-var sink []byte
+// var sink []byte
 
 func BenchmarkMarshal(b *testing.B) {
 	var sd SessionDescription
@@ -175,7 +176,8 @@ func BenchmarkMarshal(b *testing.B) {
 		b.Fatal(err)
 	}
 	for i := 0; i < b.N; i++ {
-		sink, err = sd.Marshal()
+		// sink, err = sd.Marshal()
+		_, err = sd.Marshal()
 		if err != nil {
 			b.Fatal(err)
 		}

@@ -36,8 +36,8 @@ func TestExtmap(t *testing.T) {
 }
 
 func TestTransportCCExtMap(t *testing.T) {
-	//a=extmap:<value>["/"<direction>] <URI> <extensionattributes>
-	//a=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+	// a=extmap:<value>["/"<direction>] <URI> <extensionattributes>
+	// a=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
 	uri, _ := url.Parse("http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01")
 	e := ExtMap{
 		Value: 3,
