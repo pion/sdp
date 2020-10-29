@@ -9,6 +9,8 @@ import (
 
 // Constants for SDP attributes used in JSEP
 const (
+	AttrKeyCandidate       = "candidate"
+	AttrKeyEndOfCandidates = "end-of-candidates"
 	AttrKeyIdentity        = "identity"
 	AttrKeyGroup           = "group"
 	AttrKeySSRC            = "ssrc"
