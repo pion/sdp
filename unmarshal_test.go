@@ -365,6 +365,7 @@ func TestUnmarshalNonNilAddress(t *testing.T) {
 }
 
 func BenchmarkUnmarshal(b *testing.B) {
+	b.ReportAllocs()
 	raw := []byte(CanonicalUnmarshalSDP)
 	for i := 0; i < b.N; i++ {
 		var sd SessionDescription
