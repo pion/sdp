@@ -70,12 +70,11 @@ type MediaName struct {
 	Formats []string
 }
 
-func (m *MediaName) String() *string {
-	output := strings.Join([]string{
+func (m MediaName) String() string {
+	return strings.Join([]string{
 		m.Media,
 		m.Port.String(),
 		strings.Join(m.Protos, "/"),
 		strings.Join(m.Formats, " "),
 	}, " ")
-	return &output
 }

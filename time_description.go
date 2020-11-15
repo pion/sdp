@@ -25,10 +25,10 @@ type Timing struct {
 	StopTime  uint64
 }
 
-func (t *Timing) String() *string {
+func (t Timing) String() string {
 	output := strconv.FormatUint(t.StartTime, 10)
 	output += " " + strconv.FormatUint(t.StopTime, 10)
-	return &output
+	return output
 }
 
 // RepeatTime describes the "r=" fields of the session description which
@@ -39,7 +39,7 @@ type RepeatTime struct {
 	Offsets  []int64
 }
 
-func (r *RepeatTime) String() *string {
+func (r RepeatTime) String() string {
 	fields := make([]string, 0)
 	fields = append(fields, strconv.FormatInt(r.Interval, 10))
 	fields = append(fields, strconv.FormatInt(r.Duration, 10))
@@ -47,6 +47,5 @@ func (r *RepeatTime) String() *string {
 		fields = append(fields, strconv.FormatInt(value, 10))
 	}
 
-	output := strings.Join(fields, " ")
-	return &output
+	return strings.Join(fields, " ")
 }
