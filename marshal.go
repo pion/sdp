@@ -36,7 +36,8 @@ import (
 //    k=* (encryption key)
 //    a=* (zero or more media attribute lines)
 func (s *SessionDescription) Marshal() ([]byte, error) {
-	m := new(marshaller)
+	m := make(marshaller, 0, 1024)
+
 	m.addKeyValue("v=", s.Version.String())
 	m.addKeyValue("o=", s.Origin.String())
 	m.addKeyValue("s=", s.SessionName.String())
@@ -46,8 +47,7 @@ func (s *SessionDescription) Marshal() ([]byte, error) {
 	}
 
 	if s.URI != nil {
-		uri := s.URI.String()
-		m.addKeyValue("u=", &uri)
+		m.addKeyValue("u=", s.URI.String())
 	}
 
 	if s.EmailAddress != nil {
@@ -73,14 +73,15 @@ func (s *SessionDescription) Marshal() ([]byte, error) {
 		}
 	}
 
-	rawTimeZones := make([]string, 0)
-	for _, z := range s.TimeZones {
-		rawTimeZones = append(rawTimeZones, z.String())
-	}
-
-	if len(rawTimeZones) > 0 {
-		timeZones := strings.Join(rawTimeZones, " ")
-		m.addKeyValue("z=", &timeZones)
+	if len(s.TimeZones) > 0 {
+		var b strings.Builder
+		for i, z := range s.TimeZones {
+			if i > 0 {
+				b.WriteString(" ")
+			}
+			b.WriteString(z.String())
+		}
+		m.addKeyValue("z=", b.String())
 	}
 
 	if s.EncryptionKey != nil {
@@ -119,19 +120,17 @@ func (s *SessionDescription) Marshal() ([]byte, error) {
 }
 
 // marshaller contains state during marshaling.
-type marshaller struct {
-	buf []byte
-}
+type marshaller []byte
 
-func (m *marshaller) addKeyValue(key string, value *string) {
-	if value == nil {
+func (m *marshaller) addKeyValue(key, value string) {
+	if value == "" {
 		return
 	}
-	m.buf = append(m.buf, key...)
-	m.buf = append(m.buf, *value...)
-	m.buf = append(m.buf, '\r', '\n')
+	*m = append(*m, key...)
+	*m = append(*m, value...)
+	*m = append(*m, "\r\n"...)
 }
 
 func (m *marshaller) bytes() []byte {
-	return m.buf
+	return *m
 }

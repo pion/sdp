@@ -81,9 +81,8 @@ func (s *SessionDescription) Attribute(key string) (string, bool) {
 // the version of the Session Description Protocol.
 type Version int
 
-func (v *Version) String() *string {
-	output := strconv.Itoa(int(*v))
-	return &output
+func (v Version) String() string {
+	return strconv.Itoa(int(v))
 }
 
 // Origin defines the structure for the "o=" field which provides the
@@ -97,8 +96,8 @@ type Origin struct {
 	UnicastAddress string
 }
 
-func (o *Origin) String() *string {
-	output := fmt.Sprintf(
+func (o Origin) String() string {
+	return fmt.Sprintf(
 		"%v %d %d %v %v %v",
 		o.Username,
 		o.SessionID,
@@ -107,16 +106,14 @@ func (o *Origin) String() *string {
 		o.AddressType,
 		o.UnicastAddress,
 	)
-	return &output
 }
 
 // SessionName describes a structured representations for the "s=" field
 // and is the textual session name.
 type SessionName string
 
-func (s *SessionName) String() *string {
-	output := string(*s)
-	return &output
+func (s SessionName) String() string {
+	return string(s)
 }
 
 // EmailAddress describes a structured representations for the "e=" line
@@ -124,9 +121,8 @@ func (s *SessionName) String() *string {
 // the conference.
 type EmailAddress string
 
-func (e *EmailAddress) String() *string {
-	output := string(*e)
-	return &output
+func (e EmailAddress) String() string {
+	return string(e)
 }
 
 // PhoneNumber describes a structured representations for the "p=" line
@@ -134,9 +130,8 @@ func (e *EmailAddress) String() *string {
 // conference.
 type PhoneNumber string
 
-func (p *PhoneNumber) String() *string {
-	output := string(*p)
-	return &output
+func (p PhoneNumber) String() string {
+	return string(p)
 }
 
 // TimeZone defines the structured object for "z=" line which describes
@@ -146,6 +141,6 @@ type TimeZone struct {
 	Offset         int64
 }
 
-func (z *TimeZone) String() string {
+func (z TimeZone) String() string {
 	return strconv.FormatUint(z.AdjustmentTime, 10) + " " + strconv.FormatInt(z.Offset, 10)
 }

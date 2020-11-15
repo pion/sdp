@@ -205,7 +205,7 @@ func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
 
 	for _, m := range s.MediaDescriptions {
 		for _, a := range m.Attributes {
-			attr := *a.String()
+			attr := a.String()
 			switch {
 			case strings.HasPrefix(attr, "rtpmap:"):
 				codec, err := parseRtpmap(attr)
