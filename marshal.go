@@ -73,12 +73,11 @@ func (s *SessionDescription) Marshal() ([]byte, error) {
 		}
 	}
 
-	rawTimeZones := make([]string, 0)
-	for _, z := range s.TimeZones {
-		rawTimeZones = append(rawTimeZones, z.String())
-	}
-
-	if len(rawTimeZones) > 0 {
+	if len(s.TimeZones) > 0 {
+		rawTimeZones := make([]string, len(s.TimeZones))
+		for i, z := range s.TimeZones {
+			rawTimeZones[i] = z.String()
+		}
 		timeZones := strings.Join(rawTimeZones, " ")
 		m.addKeyValue("z=", &timeZones)
 	}

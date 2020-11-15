@@ -170,6 +170,7 @@ func TestMarshalCanonical(t *testing.T) {
 // var sink []byte
 
 func BenchmarkMarshal(b *testing.B) {
+	b.ReportAllocs()
 	var sd SessionDescription
 	err := sd.Unmarshal([]byte(CanonicalUnmarshalSDP))
 	if err != nil {
