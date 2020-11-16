@@ -920,40 +920,35 @@ func unmarshalMediaAttribute(l *lexer) (stateFn, error) {
 	return s14, nil
 }
 
-func parseTimeUnits(value string) (int64, error) {
-	// Some time offsets in the protocol can be provided with a shorthand
-	// notation. This code ensures to convert it to NTP timestamp format.
-	//      d - days (86400 seconds)
-	//      h - hours (3600 seconds)
-	//      m - minutes (60 seconds)
-	//      s - seconds (allowed for completeness)
-	switch value[len(value)-1:] {
-	case "d":
-		num, err := strconv.ParseInt(value[:len(value)-1], 10, 64)
-		if err != nil {
-			return 0, fmt.Errorf("%w `%v`", errSDPInvalidValue, value)
-		}
-		return num * 86400, nil
-	case "h":
-		num, err := strconv.ParseInt(value[:len(value)-1], 10, 64)
-		if err != nil {
-			return 0, fmt.Errorf("%w `%v`", errSDPInvalidValue, value)
-		}
-		return num * 3600, nil
-	case "m":
-		num, err := strconv.ParseInt(value[:len(value)-1], 10, 64)
-		if err != nil {
-			return 0, fmt.Errorf("%w `%v`", errSDPInvalidValue, value)
-		}
-		return num * 60, nil
+func parseTimeUnits(value string) (num int64, err error) {
+	k := timeShorthand(value[len(value)-1])
+	if k > 0 {
+		num, err = strconv.ParseInt(value[:len(value)-1], 10, 64)
+	} else {
+		k = 1
+		num, err = strconv.ParseInt(value, 10, 64)
 	}
-
-	num, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("%w `%v`", errSDPInvalidValue, value)
 	}
+	return num * k, nil
+}
 
-	return num, nil
+func timeShorthand(b byte) int64 {
+	// Some time offsets in the protocol can be provided with a shorthand
+	// notation. This code ensures to convert it to NTP timestamp format.
+	switch b {
+	case 'd': // days
+		return 86400
+	case 'h': // hours
+		return 3600
+	case 'm': // minutes
+		return 60
+	case 's': // seconds (allowed for completeness)
+		return 1
+	default:
+		return 0
+	}
 }
 
 func parsePort(value string) (int, error) {
