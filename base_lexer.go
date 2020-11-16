@@ -14,14 +14,11 @@ type syntaxError struct {
 }
 
 func (e syntaxError) Error() string {
+	if e.i < 0 {
+		e.i = 0
+	}
 	head, middle, tail := e.s[:e.i], e.s[e.i:e.i+1], e.s[e.i+1:]
-	if head == "" {
-		return fmt.Sprintf("%s <--%s", head, middle)
-	}
-	if tail == "" {
-		return fmt.Sprintf("%s--> %s", middle, tail)
-	}
-	return fmt.Sprintf("%s--> %s <--%s", head, middle, tail)
+	return fmt.Sprintf("%s --> %s <-- %s", head, middle, tail)
 }
 
 type baseLexer struct {
@@ -30,7 +27,7 @@ type baseLexer struct {
 }
 
 func (l baseLexer) syntaxError() error {
-	return syntaxError{s: string(l.data), i: l.pos}
+	return syntaxError{s: string(l.data), i: l.pos - 1}
 }
 
 func (l *baseLexer) unreadByte() error {

@@ -398,7 +398,7 @@ func (l *lexer) unmarshalConnectionInformation() (*ConnectionInformation, error)
 	}
 
 	if address != "" {
-		c.Address = new(Address) // bug? may be empty!
+		c.Address = new(Address)
 		c.Address.Address = address
 	}
 

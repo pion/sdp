@@ -23,6 +23,16 @@ func TestLexer(t *testing.T) {
 		}
 	})
 
+	t.Run("syntax error", func(t *testing.T) {
+		l := &baseLexer{data: []byte("12NaN")}
+		_, err := l.readUint64Field()
+		if err != nil {
+			err.Error() // smoke test
+		} else {
+			t.Fatal("no error")
+		}
+	})
+
 	t.Run("many fields", func(t *testing.T) {
 		l := &baseLexer{data: []byte("aaa  123\nf1 f2\nlast")}
 
