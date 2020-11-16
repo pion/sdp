@@ -1,7 +1,6 @@
 package sdp
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -294,59 +293,26 @@ func (s *SessionDescription) GetPayloadTypeForCodec(wanted Codec) (uint8, error)
 	return 0, errCodecNotFound
 }
 
-type lexer struct {
-	desc  *SessionDescription
-	input *bufio.Reader
-}
-
 type stateFn func(*lexer) (stateFn, error)
 
-func readType(input *bufio.Reader) (string, error) {
-	for {
-		b, err := input.ReadByte()
-		if err != nil {
-			return "", err
-		}
-		if b == '\n' || b == '\r' {
-			continue
-		}
-		if err = input.UnreadByte(); err != nil {
-			return "", err
-		}
-
-		key, err := input.ReadString('=')
-		if err != nil {
-			return key, err
-		}
-
-		switch len(key) {
-		case 2:
-			return key, nil
-		default:
-			return key, fmt.Errorf("%w: %v", errSyntaxError, strconv.Quote(key))
-		}
-	}
+type lexer struct {
+	desc *SessionDescription
+	baseLexer
 }
 
-func readValue(input *bufio.Reader) (string, error) {
-	lineBytes, _, err := input.ReadLine()
-	line := string(lineBytes)
-	if err != nil && err != io.EOF {
-		return line, err
+type keyToState func(key string) stateFn
+
+func (l *lexer) handleType(fn keyToState) (stateFn, error) {
+	key, err := l.readType()
+	if err == io.EOF && key == "" {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
 
-	if len(line) == 0 {
-		return line, io.EOF
+	if res := fn(key); res != nil {
+		return res, nil
 	}
 
-	return line, nil
-}
-
-func indexOf(element string, data []string) int {
-	for k, v := range data {
-		if element == v {
-			return k
-		}
-	}
-	return -1
+	return nil, l.syntaxError()
 }
