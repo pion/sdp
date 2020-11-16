@@ -1,8 +1,6 @@
 package sdp
 
 import (
-	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -93,13 +91,9 @@ var (
 // |   s16  |    |    14 |    |     |    |  15 |   |    | 12 |   |   |     |   |   |    |   |    |
 // +--------+----+-------+----+-----+----+-----+---+----+----+---+---+-----+---+---+----+---+----+
 func (s *SessionDescription) Unmarshal(value []byte) error {
-	bufsz := 4096
-	if len(value) < bufsz {
-		bufsz = len(value)
-	}
 	l := &lexer{
-		desc:  s,
-		input: bufio.NewReaderSize(bytes.NewReader(value), bufsz),
+		desc: s,
+		data: value,
 	}
 	for state := s1; state != nil; {
 		var err error
@@ -112,25 +106,25 @@ func (s *SessionDescription) Unmarshal(value []byte) error {
 }
 
 func s1(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"v=": unmarshalProtocolVersion,
 	})
 }
 
 func s2(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"o=": unmarshalOrigin,
 	})
 }
 
 func s3(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"s=": unmarshalSessionName,
 	})
 }
 
 func s4(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"b=": unmarshalSessionBandwidth,
 		"c=": unmarshalSessionConnectionInformation,
 		"e=": unmarshalEmail,
@@ -142,14 +136,14 @@ func s4(l *lexer) (stateFn, error) {
 }
 
 func s5(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"b=": unmarshalSessionBandwidth,
 		"t=": unmarshalTiming,
 	})
 }
 
 func s6(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"b=": unmarshalSessionBandwidth,
 		"c=": unmarshalSessionConnectionInformation,
 		"p=": unmarshalPhone,
@@ -158,7 +152,7 @@ func s6(l *lexer) (stateFn, error) {
 }
 
 func s7(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"b=": unmarshalSessionBandwidth,
 		"c=": unmarshalSessionConnectionInformation,
 		"e=": unmarshalEmail,
@@ -169,7 +163,7 @@ func s7(l *lexer) (stateFn, error) {
 }
 
 func s8(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"b=": unmarshalSessionBandwidth,
 		"c=": unmarshalSessionConnectionInformation,
 		"t=": unmarshalTiming,
@@ -177,7 +171,7 @@ func s8(l *lexer) (stateFn, error) {
 }
 
 func s9(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"a=": unmarshalSessionAttribute,
 		"k=": unmarshalSessionEncryptionKey,
 		"m=": unmarshalMediaDescription,
@@ -188,7 +182,7 @@ func s9(l *lexer) (stateFn, error) {
 }
 
 func s10(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"b=": unmarshalSessionBandwidth,
 		"c=": unmarshalSessionConnectionInformation,
 		"e=": unmarshalEmail,
@@ -198,14 +192,14 @@ func s10(l *lexer) (stateFn, error) {
 }
 
 func s11(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"a=": unmarshalSessionAttribute,
 		"m=": unmarshalMediaDescription,
 	})
 }
 
 func s12(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"a=": unmarshalMediaAttribute,
 		"b=": unmarshalMediaBandwidth,
 		"c=": unmarshalMediaConnectionInformation,
@@ -216,7 +210,7 @@ func s12(l *lexer) (stateFn, error) {
 }
 
 func s13(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"a=": unmarshalSessionAttribute,
 		"k=": unmarshalSessionEncryptionKey,
 		"m=": unmarshalMediaDescription,
@@ -224,7 +218,7 @@ func s13(l *lexer) (stateFn, error) {
 }
 
 func s14(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"a=": unmarshalMediaAttribute,
 		"b=": unmarshalMediaBandwidth,             // Non-spec ordering
 		"c=": unmarshalMediaConnectionInformation, // Non-spec ordering
@@ -235,7 +229,7 @@ func s14(l *lexer) (stateFn, error) {
 }
 
 func s15(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"a=": unmarshalMediaAttribute,
 		"b=": unmarshalMediaBandwidth,
 		"c=": unmarshalMediaConnectionInformation,
@@ -246,7 +240,7 @@ func s15(l *lexer) (stateFn, error) {
 }
 
 func s16(l *lexer) (stateFn, error) {
-	return s(l, map[string]stateFn{
+	return l.s(map[string]stateFn{
 		"a=": unmarshalMediaAttribute,
 		"b=": unmarshalMediaBandwidth,
 		"c=": unmarshalMediaConnectionInformation,
@@ -256,8 +250,8 @@ func s16(l *lexer) (stateFn, error) {
 	})
 }
 
-func s(l *lexer, m map[string]stateFn) (stateFn, error) {
-	key, err := readType(l.input)
+func (l *lexer) s(m map[string]stateFn) (stateFn, error) {
+	key, err := l.readType()
 	if err != nil {
 		if err == io.EOF && key == "" {
 			return nil, nil
@@ -273,7 +267,7 @@ func s(l *lexer, m map[string]stateFn) (stateFn, error) {
 }
 
 func unmarshalProtocolVersion(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +287,7 @@ func unmarshalProtocolVersion(l *lexer) (stateFn, error) {
 }
 
 func unmarshalOrigin(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -315,13 +309,13 @@ func unmarshalOrigin(l *lexer) (stateFn, error) {
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if i := indexOf(fields[3], []string{"IN"}); i == -1 {
+	if i := indexOf(fields[3], "IN"); i == -1 {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[3])
 	}
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.7
-	if i := indexOf(fields[4], []string{"IP4", "IP6"}); i == -1 {
+	if i := indexOf(fields[4], "IP4", "IP6"); i == -1 {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[3])
 	}
 
@@ -338,7 +332,7 @@ func unmarshalOrigin(l *lexer) (stateFn, error) {
 }
 
 func unmarshalSessionName(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +342,7 @@ func unmarshalSessionName(l *lexer) (stateFn, error) {
 }
 
 func unmarshalSessionInformation(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +353,7 @@ func unmarshalSessionInformation(l *lexer) (stateFn, error) {
 }
 
 func unmarshalURI(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +367,7 @@ func unmarshalURI(l *lexer) (stateFn, error) {
 }
 
 func unmarshalEmail(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +378,7 @@ func unmarshalEmail(l *lexer) (stateFn, error) {
 }
 
 func unmarshalPhone(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -395,7 +389,7 @@ func unmarshalPhone(l *lexer) (stateFn, error) {
 }
 
 func unmarshalSessionConnectionInformation(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -415,13 +409,13 @@ func unmarshalConnectionInformation(value string) (*ConnectionInformation, error
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if i := indexOf(fields[0], []string{"IN"}); i == -1 {
+	if i := indexOf(fields[0], "IN"); i == -1 {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[0])
 	}
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.7
-	if i := indexOf(fields[1], []string{"IP4", "IP6"}); i == -1 {
+	if i := indexOf(fields[1], "IP4", "IP6"); i == -1 {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[1])
 	}
 
@@ -438,7 +432,7 @@ func unmarshalConnectionInformation(value string) (*ConnectionInformation, error
 }
 
 func unmarshalSessionBandwidth(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -461,7 +455,7 @@ func unmarshalBandwidth(value string) (*Bandwidth, error) {
 	experimental := strings.HasPrefix(parts[0], "X-")
 	if experimental {
 		parts[0] = strings.TrimPrefix(parts[0], "X-")
-	} else if i := indexOf(parts[0], []string{"CT", "AS"}); i == -1 {
+	} else if i := indexOf(parts[0], "CT", "AS"); i == -1 {
 		// Set according to currently registered with IANA
 		// https://tools.ietf.org/html/rfc4566#section-5.8
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, parts[0])
@@ -480,7 +474,7 @@ func unmarshalBandwidth(value string) (*Bandwidth, error) {
 }
 
 func unmarshalTiming(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -508,7 +502,7 @@ func unmarshalTiming(l *lexer) (stateFn, error) {
 }
 
 func unmarshalRepeatTimes(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -544,7 +538,7 @@ func unmarshalRepeatTimes(l *lexer) (stateFn, error) {
 }
 
 func unmarshalTimeZones(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -577,7 +571,7 @@ func unmarshalTimeZones(l *lexer) (stateFn, error) {
 }
 
 func unmarshalSessionEncryptionKey(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -588,7 +582,7 @@ func unmarshalSessionEncryptionKey(l *lexer) (stateFn, error) {
 }
 
 func unmarshalSessionAttribute(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -606,7 +600,7 @@ func unmarshalSessionAttribute(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaDescription(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -621,7 +615,7 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 	// <media>
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
-	if i := indexOf(fields[0], []string{"audio", "video", "text", "application", "message"}); i == -1 {
+	if i := indexOf(fields[0], "audio", "video", "text", "application", "message"); i == -1 {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[0])
 	}
 	newMediaDesc.MediaName.Media = fields[0]
@@ -645,7 +639,7 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
 	for _, proto := range strings.Split(fields[2], "/") {
-		if i := indexOf(proto, []string{"UDP", "RTP", "AVP", "SAVP", "SAVPF", "TLS", "DTLS", "SCTP", "AVPF"}); i == -1 {
+		if i := indexOf(proto, "UDP", "RTP", "AVP", "SAVP", "SAVPF", "TLS", "DTLS", "SCTP", "AVPF"); i == -1 {
 			return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[2])
 		}
 		newMediaDesc.MediaName.Protos = append(newMediaDesc.MediaName.Protos, proto)
@@ -662,7 +656,7 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaTitle(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -674,7 +668,7 @@ func unmarshalMediaTitle(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaConnectionInformation(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -688,7 +682,7 @@ func unmarshalMediaConnectionInformation(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaBandwidth(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -703,7 +697,7 @@ func unmarshalMediaBandwidth(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaEncryptionKey(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}
@@ -715,7 +709,7 @@ func unmarshalMediaEncryptionKey(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaAttribute(l *lexer) (stateFn, error) {
-	value, err := readValue(l.input)
+	value, err := l.readValue()
 	if err != nil {
 		return nil, err
 	}

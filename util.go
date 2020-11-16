@@ -1,7 +1,6 @@
 package sdp
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -280,27 +279,80 @@ func (s *SessionDescription) GetPayloadTypeForCodec(wanted Codec) (uint8, error)
 	return 0, errCodecNotFound
 }
 
-type lexer struct {
-	desc  *SessionDescription
-	input *bufio.Reader
-}
-
 type stateFn func(*lexer) (stateFn, error)
 
-func readType(input *bufio.Reader) (string, error) {
+type lexer struct {
+	desc *SessionDescription
+	data []byte
+	pos  int
+}
+
+func (l *lexer) unreadByte() error {
+	if l.pos == 0 {
+		return io.EOF
+	}
+	l.pos--
+	return nil
+}
+
+func (l *lexer) readByte() (byte, error) {
+	if l.pos >= len(l.data) {
+		return byte(0), io.EOF
+	}
+	ch := l.data[l.pos]
+	l.pos++
+	return ch, nil
+}
+
+func (l *lexer) readLine() (string, error) {
+	var b strings.Builder
+	b.Grow(200)
 	for {
-		b, err := input.ReadByte()
+		ch, err := l.readByte()
+		if err != nil {
+			return "", err
+		}
+		if ch == '\r' {
+			continue
+		}
+		if ch == '\n' {
+			break
+		}
+		b.WriteByte(ch)
+	}
+	return b.String(), nil
+}
+
+func (l *lexer) readString(until byte) (string, error) {
+	var b strings.Builder
+	b.Grow(20)
+	for {
+		ch, err := l.readByte()
+		if err != nil {
+			return "", err
+		}
+		b.WriteByte(ch)
+		if ch == until {
+			break
+		}
+	}
+	return b.String(), nil
+}
+
+func (l *lexer) readType() (string, error) {
+	for {
+		b, err := l.readByte()
 		if err != nil {
 			return "", err
 		}
 		if b == '\n' || b == '\r' {
 			continue
 		}
-		if err := input.UnreadByte(); err != nil {
+		if err := l.unreadByte(); err != nil {
 			return "", err
 		}
 
-		key, err := input.ReadString('=')
+		key, err := l.readString('=')
 		if err != nil {
 			return key, err
 		}
@@ -313,9 +365,8 @@ func readType(input *bufio.Reader) (string, error) {
 	}
 }
 
-func readValue(input *bufio.Reader) (string, error) {
-	lineBytes, _, err := input.ReadLine()
-	line := string(lineBytes)
+func (l *lexer) readValue() (string, error) {
+	line, err := l.readLine()
 	if err != nil && err != io.EOF {
 		return line, err
 	}
@@ -327,7 +378,7 @@ func readValue(input *bufio.Reader) (string, error) {
 	return line, nil
 }
 
-func indexOf(element string, data []string) int {
+func indexOf(element string, data ...string) int {
 	for k, v := range data {
 		if element == v {
 			return k
