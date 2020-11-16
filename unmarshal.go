@@ -797,28 +797,27 @@ func unmarshalSessionAttribute(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaDescription(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	var newMediaDesc MediaDescription
+
+	// <media>
+	field, err := l.readField()
 	if err != nil {
 		return nil, err
 	}
 
-	fields := strings.Fields(value)
-	if len(fields) < 4 {
-		return nil, fmt.Errorf("%w `m=%v`", errSDPInvalidSyntax, fields)
-	}
-
-	newMediaDesc := &MediaDescription{}
-
-	// <media>
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
-	if !anyOf(fields[0], "audio", "video", "text", "application", "message") {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[0])
+	if !anyOf(field, "audio", "video", "text", "application", "message") {
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, field)
 	}
-	newMediaDesc.MediaName.Media = fields[0]
+	newMediaDesc.MediaName.Media = field
 
 	// <port>
-	parts := strings.Split(fields[1], "/")
+	field, err = l.readField()
+	if err != nil {
+		return nil, err
+	}
+	parts := strings.Split(field, "/")
 	newMediaDesc.MediaName.Port.Value, err = parsePort(parts[0])
 	if err != nil {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidPortValue, parts[0])
@@ -833,22 +832,37 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 	}
 
 	// <proto>
+	field, err = l.readField()
+	if err != nil {
+		return nil, err
+	}
+
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
-	for _, proto := range strings.Split(fields[2], "/") {
+	for _, proto := range strings.Split(field, "/") {
 		if !anyOf(proto, "UDP", "RTP", "AVP", "SAVP", "SAVPF", "TLS", "DTLS", "SCTP", "AVPF") {
-			return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[2])
+			return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, field)
 		}
 		newMediaDesc.MediaName.Protos = append(newMediaDesc.MediaName.Protos, proto)
 	}
 
 	// <fmt>...
-	for i := 3; i < len(fields); i++ {
-		newMediaDesc.MediaName.Formats = append(newMediaDesc.MediaName.Formats, fields[i])
+	for {
+		field, err = l.readField()
+		if err != nil {
+			return nil, err
+		}
+		if field == "" {
+			break
+		}
+		newMediaDesc.MediaName.Formats = append(newMediaDesc.MediaName.Formats, field)
 	}
 
-	l.desc.MediaDescriptions = append(l.desc.MediaDescriptions, newMediaDesc)
+	if err := l.nextLine(); err != nil {
+		return nil, err
+	}
 
+	l.desc.MediaDescriptions = append(l.desc.MediaDescriptions, &newMediaDesc)
 	return s12, nil
 }
 
