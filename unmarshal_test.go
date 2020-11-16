@@ -329,7 +329,7 @@ func TestUnmarshalRepeatTimes(t *testing.T) {
 		t.Fatalf("Marshal(): err=%v, want %v", got, want)
 	}
 	if string(actual) != RepeatTimesSDPExpected {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", RepeatTimesSDPExpected, actual)
+		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", RepeatTimesSDPExpected, string(actual))
 	}
 }
 
@@ -344,7 +344,7 @@ func TestUnmarshalTimeZones(t *testing.T) {
 		t.Fatalf("Marshal(): err=%v, want %v", got, want)
 	}
 	if string(actual) != TimeZonesSDPExpected {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", TimeZonesSDPExpected, actual)
+		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", TimeZonesSDPExpected, string(actual))
 	}
 }
 
@@ -365,6 +365,7 @@ func TestUnmarshalNonNilAddress(t *testing.T) {
 }
 
 func BenchmarkUnmarshal(b *testing.B) {
+	b.ReportAllocs()
 	raw := []byte(CanonicalUnmarshalSDP)
 	for i := 0; i < b.N; i++ {
 		var sd SessionDescription
