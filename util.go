@@ -20,7 +20,6 @@ var (
 	errExtractCodecRtcpFb  = errors.New("could not extract codec from rtcp-fb")
 	errPayloadTypeNotFound = errors.New("payload type not found")
 	errCodecNotFound       = errors.New("codec not found")
-	errSyntaxError         = errors.New("SyntaxError")
 )
 
 // ConnectionRole indicates which of the end points should initiate the connection establishment
@@ -247,7 +246,7 @@ func codecsMatch(wanted, got Codec) bool {
 	return !((wanted.Name != "" && !strings.EqualFold(wanted.Name, got.Name)) ||
 		(wanted.ClockRate != 0 && wanted.ClockRate != got.ClockRate) ||
 		(wanted.EncodingParameters != "" && wanted.EncodingParameters != got.EncodingParameters) ||
-		wanted.Fmtp != "" && !equivalentFmtp(wanted.Fmtp, got.Fmtp))
+		(wanted.Fmtp != "" && !equivalentFmtp(wanted.Fmtp, got.Fmtp)))
 }
 
 // GetCodecForPayloadType scans the SessionDescription for the given payload type and returns the codec

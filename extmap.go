@@ -37,21 +37,21 @@ func (e *ExtMap) Clone() Attribute {
 func (e *ExtMap) Unmarshal(raw string) error {
 	parts := strings.SplitN(raw, ":", 2)
 	if len(parts) != 2 {
-		return fmt.Errorf("%w: %v", errSyntaxError, raw)
+		return fmt.Errorf("SyntaxError: %v", raw)
 	}
 
 	fields := strings.Fields(parts[1])
 	if len(fields) < 2 {
-		return fmt.Errorf("%w: %v", errSyntaxError, raw)
+		return fmt.Errorf("SyntaxError: %v", raw)
 	}
 
 	valdir := strings.Split(fields[0], "/")
 	value, err := strconv.ParseInt(valdir[0], 10, 64)
 	if (value < 1) || (value > 246) {
-		return fmt.Errorf("%w: %v -- extmap key must be in the range 1-256", errSyntaxError, valdir[0])
+		return fmt.Errorf("SyntaxError: %v -- extmap key must be in the range 1-256", valdir[0])
 	}
 	if err != nil {
-		return fmt.Errorf("%w: %v", errSyntaxError, valdir[0])
+		return fmt.Errorf("SyntaxError: %v", valdir[0])
 	}
 
 	var direction Direction
