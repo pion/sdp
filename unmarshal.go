@@ -455,20 +455,19 @@ func s16(l *lexer) (stateFn, error) {
 }
 
 func unmarshalProtocolVersion(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	version, err := l.readUint64Field()
 	if err != nil {
 		return nil, err
-	}
-
-	version, err := strconv.ParseInt(value, 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, value)
 	}
 
 	// As off the latest draft of the rfc this value is required to be 0.
 	// https://tools.ietf.org/html/draft-ietf-rtcweb-jsep-24#section-5.8.1
 	if version != 0 {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, version)
+	}
+
+	if err := l.nextLine(); err != nil {
+		return nil, err
 	}
 
 	return s2, nil
