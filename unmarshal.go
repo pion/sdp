@@ -837,7 +837,8 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 	}
 
 	if len(parts) > 1 {
-		portRange, err := strconv.Atoi(parts[1])
+		var portRange int
+		portRange, err = strconv.Atoi(parts[1])
 		if err != nil {
 			return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, parts)
 		}

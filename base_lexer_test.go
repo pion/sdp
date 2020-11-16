@@ -13,16 +13,14 @@ func TestLexer(t *testing.T) {
 			"with linebreak":   "aaa \n",
 			"with linebreak 2": "aaa \r\n",
 		} {
-			t.Run(k, func(t *testing.T) {
-				l := &baseLexer{value: []byte(value)}
-				field, err := l.readField()
-				if err != nil {
-					t.Fatal(err)
-				}
-				if field != "aaa" {
-					t.Errorf("aaa not parsed, got: '%v'", field)
-				}
-			})
+			l := &baseLexer{value: []byte(value)}
+			field, err := l.readField()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if field != "aaa" {
+				t.Errorf("%s: aaa not parsed, got: '%v'", k, field)
+			}
 		}
 	})
 
