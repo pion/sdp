@@ -22,10 +22,9 @@ type ConnectionInformation struct {
 }
 
 func (c ConnectionInformation) String() string {
-	parts := []string{c.NetworkType, c.AddressType, c.Address.String()}
-	// Trim off Address if it is empty.
-	if parts[2] == "" {
-		parts = parts[:2]
+	parts := []string{c.NetworkType, c.AddressType}
+	if c.Address != nil && c.Address.String() != "" {
+		parts = append(parts, c.Address.String())
 	}
 	return strings.Join(parts, " ")
 }

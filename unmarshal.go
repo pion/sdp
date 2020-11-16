@@ -577,46 +577,55 @@ func unmarshalPhone(l *lexer) (stateFn, error) {
 }
 
 func unmarshalSessionConnectionInformation(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	var err error
+	l.desc.ConnectionInformation, err = l.unmarshalConnectionInformation()
 	if err != nil {
 		return nil, err
-	}
-
-	l.desc.ConnectionInformation, err = unmarshalConnectionInformation(value)
-	if err != nil {
-		return nil, fmt.Errorf("%w `c=%v`", errSDPInvalidSyntax, value)
 	}
 	return s5, nil
 }
 
-func unmarshalConnectionInformation(value string) (*ConnectionInformation, error) {
-	fields := strings.Fields(value)
-	if len(fields) < 2 {
-		return nil, fmt.Errorf("%w `c=%v`", errSDPInvalidSyntax, fields)
+func (l *lexer) unmarshalConnectionInformation() (*ConnectionInformation, error) {
+	var err error
+	var c ConnectionInformation
+
+	c.NetworkType, err = l.readField()
+	if err != nil {
+		return nil, err
 	}
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if !anyOf(fields[0], "IN") {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[0])
+	if !anyOf(c.NetworkType, "IN") {
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, c.NetworkType)
+	}
+
+	c.AddressType, err = l.readField()
+	if err != nil {
+		return nil, err
 	}
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.7
-	if !anyOf(fields[1], "IP4", "IP6") {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[1])
+	if !anyOf(c.AddressType, "IP4", "IP6") {
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, c.AddressType)
 	}
 
-	connAddr := new(Address)
-	if len(fields) > 2 {
-		connAddr.Address = fields[2]
+	address, err := l.readField()
+	if err != nil {
+		return nil, err
 	}
 
-	return &ConnectionInformation{
-		NetworkType: fields[0],
-		AddressType: fields[1],
-		Address:     connAddr,
-	}, nil
+	if address != "" {
+		c.Address = new(Address)
+		c.Address.Address = address
+	}
+
+	if err := l.nextLine(); err != nil {
+		return nil, err
+	}
+
+	return &c, nil
 }
 
 func unmarshalSessionBandwidth(l *lexer) (stateFn, error) {
@@ -856,15 +865,11 @@ func unmarshalMediaTitle(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaConnectionInformation(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	var err error
+	latestMediaDesc := l.desc.MediaDescriptions[len(l.desc.MediaDescriptions)-1]
+	latestMediaDesc.ConnectionInformation, err = l.unmarshalConnectionInformation()
 	if err != nil {
 		return nil, err
-	}
-
-	latestMediaDesc := l.desc.MediaDescriptions[len(l.desc.MediaDescriptions)-1]
-	latestMediaDesc.ConnectionInformation, err = unmarshalConnectionInformation(value)
-	if err != nil {
-		return nil, fmt.Errorf("%w `c=%v`", errSDPInvalidSyntax, value)
 	}
 	return s15, nil
 }
