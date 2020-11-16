@@ -671,30 +671,24 @@ func unmarshalBandwidth(value string) (*Bandwidth, error) {
 }
 
 func unmarshalTiming(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	var err error
+	var td TimeDescription
+
+	td.Timing.StartTime, err = l.readUint64Field()
 	if err != nil {
 		return nil, err
 	}
 
-	fields := strings.Fields(value)
-	if len(fields) < 2 {
-		return nil, fmt.Errorf("%w `t=%v`", errSDPInvalidSyntax, fields)
+	td.Timing.StopTime, err = l.readUint64Field()
+	if err != nil {
+		return nil, err
 	}
 
-	td := TimeDescription{}
-
-	td.Timing.StartTime, err = strconv.ParseUint(fields[0], 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[1])
-	}
-
-	td.Timing.StopTime, err = strconv.ParseUint(fields[1], 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[1])
+	if err := l.nextLine(); err != nil {
+		return nil, err
 	}
 
 	l.desc.TimeDescriptions = append(l.desc.TimeDescriptions, td)
-
 	return s9, nil
 }
 
