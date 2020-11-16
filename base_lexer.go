@@ -199,7 +199,8 @@ func (l *baseLexer) readType() (string, error) {
 			continue
 		}
 
-		if err := l.unreadByte(); err != nil {
+		err = l.unreadByte()
+		if err != nil {
 			return "", err
 		}
 

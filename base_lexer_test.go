@@ -1,17 +1,20 @@
 package sdp
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestLexer(t *testing.T) {
 	t.Run("single field", func(t *testing.T) {
-		for k, s := range map[string]string{
+		for k, value := range map[string]string{
 			"clean":            "aaa",
 			"with extra space": "aaa ",
 			"with linebreak":   "aaa \n",
 			"with linebreak 2": "aaa \r\n",
 		} {
 			t.Run(k, func(t *testing.T) {
-				l := &baseLexer{value: []byte(s)}
+				l := &baseLexer{value: []byte(value)}
 				field, err := l.readField()
 				if err != nil {
 					t.Fatal(err)
@@ -27,7 +30,7 @@ func TestLexer(t *testing.T) {
 		l := &baseLexer{value: []byte("12NaN")}
 		_, err := l.readUint64Field()
 		if err != nil {
-			err.Error() // smoke test
+			fmt.Println("error message:", err.Error())
 		} else {
 			t.Fatal("no error")
 		}

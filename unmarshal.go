@@ -91,10 +91,6 @@ var (
 // |   s16  |    |    14 |    |     |    |  15 |   |    | 12 |   |   |     |   |   |    |   |    |
 // +--------+----+-------+----+-----+----+-----+---+----+----+---+---+-----+---+---+----+---+----+
 func (s *SessionDescription) Unmarshal(value []byte) error {
-	bufsz := 4096
-	if len(value) < bufsz {
-		bufsz = len(value)
-	}
 	l := new(lexer)
 	l.desc = s
 	l.value = value
