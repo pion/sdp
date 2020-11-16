@@ -37,15 +37,14 @@ type Address struct {
 	Range   *int
 }
 
-func (c *Address) String() string {
-	var parts []string
-	parts = append(parts, c.Address)
-	if c.TTL != nil {
-		parts = append(parts, strconv.Itoa(*c.TTL))
+func (a Address) String() string {
+	parts := []string{a.Address}
+	if a.TTL != nil {
+		parts = append(parts, strconv.Itoa(*a.TTL))
 	}
 
-	if c.Range != nil {
-		parts = append(parts, strconv.Itoa(*c.Range))
+	if a.Range != nil {
+		parts = append(parts, strconv.Itoa(*a.Range))
 	}
 
 	return strings.Join(parts, "/")

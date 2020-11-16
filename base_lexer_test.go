@@ -12,7 +12,7 @@ func TestLexer(t *testing.T) {
 		} {
 			t.Run(k, func(t *testing.T) {
 				l := &baseLexer{data: []byte(s)}
-				field, err := l.readStringField()
+				field, err := l.readField()
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -23,24 +23,69 @@ func TestLexer(t *testing.T) {
 		}
 	})
 
-	t.Run("two fields", func(t *testing.T) {
-		l := &baseLexer{data: []byte(`aaa  123`)}
+	t.Run("many fields", func(t *testing.T) {
+		l := &baseLexer{data: []byte("aaa  123\nf1 f2\nlast")}
 
-		field, err := l.readStringField()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if field != "aaa" {
-			t.Errorf("aaa not parsed, got: '%v'", field)
-		}
+		t.Run("first line", func(t *testing.T) {
+			field, err := l.readField()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if field != "aaa" {
+				t.Errorf("aaa not parsed, got: '%v'", field)
+			}
 
-		value, err := l.readUint64Field()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if value != 123 {
-			t.Errorf("value not parsed, got: '%v'", value)
-		}
+			value, err := l.readUint64Field()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if value != 123 {
+				t.Errorf("aaa not parsed, got: '%v'", field)
+			}
+
+			if err := l.nextLine(); err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		t.Run("second line", func(t *testing.T) {
+			field, err := l.readField()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if field != "f1" {
+				t.Errorf("value not parsed, got: '%v'", field)
+			}
+
+			field, err = l.readField()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if field != "f2" {
+				t.Errorf("value not parsed, got: '%v'", field)
+			}
+
+			field, err = l.readField()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if field != "" {
+				t.Errorf("value not parsed, got: '%v'", field)
+			}
+
+			if err := l.nextLine(); err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		t.Run("last line", func(t *testing.T) {
+			field, err := l.readField()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if field != "last" {
+				t.Errorf("value not parsed, got: '%v'", field)
+			}
+		})
 	})
-
 }

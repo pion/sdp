@@ -241,7 +241,7 @@ func unmarshalProtocolVersion(l *lexer) (stateFn, error) {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, version)
 	}
 
-	if err := l.takeLinebreak(); err != nil {
+	if err := l.nextLine(); err != nil {
 		return nil, err
 	}
 
@@ -251,22 +251,22 @@ func unmarshalProtocolVersion(l *lexer) (stateFn, error) {
 func unmarshalOrigin(l *lexer) (stateFn, error) {
 	var err error
 
-	l.desc.Origin.Username, err = l.readStringField()
+	l.desc.Origin.Username, err = l.readField()
 	if err != nil {
 		return nil, err
 	}
 
 	l.desc.Origin.SessionID, err = l.readUint64Field()
 	if err != nil {
-		return nil, errSDPInvalidNumericValue
+		return nil, err
 	}
 
 	l.desc.Origin.SessionVersion, err = l.readUint64Field()
 	if err != nil {
-		return nil, errSDPInvalidNumericValue
+		return nil, err
 	}
 
-	l.desc.Origin.NetworkType, err = l.readStringField()
+	l.desc.Origin.NetworkType, err = l.readField()
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +277,7 @@ func unmarshalOrigin(l *lexer) (stateFn, error) {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, l.desc.Origin.NetworkType)
 	}
 
-	l.desc.Origin.AddressType, err = l.readStringField()
+	l.desc.Origin.AddressType, err = l.readField()
 	if err != nil {
 		return nil, err
 	}
@@ -288,8 +288,12 @@ func unmarshalOrigin(l *lexer) (stateFn, error) {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, l.desc.Origin.AddressType)
 	}
 
-	l.desc.Origin.UnicastAddress, err = l.readStringField()
+	l.desc.Origin.UnicastAddress, err = l.readField()
 	if err != nil {
+		return nil, err
+	}
+
+	if err := l.nextLine(); err != nil {
 		return nil, err
 	}
 
@@ -354,46 +358,55 @@ func unmarshalPhone(l *lexer) (stateFn, error) {
 }
 
 func unmarshalSessionConnectionInformation(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	var err error
+	l.desc.ConnectionInformation, err = l.unmarshalConnectionInformation()
 	if err != nil {
 		return nil, err
-	}
-
-	l.desc.ConnectionInformation, err = unmarshalConnectionInformation(value)
-	if err != nil {
-		return nil, fmt.Errorf("%w `c=%v`", errSDPInvalidSyntax, value)
 	}
 	return sFn[5], nil
 }
 
-func unmarshalConnectionInformation(value string) (*ConnectionInformation, error) {
-	fields := strings.Fields(value)
-	if len(fields) < 2 {
-		return nil, fmt.Errorf("%w `c=%v`", errSDPInvalidSyntax, fields)
+func (l *lexer) unmarshalConnectionInformation() (*ConnectionInformation, error) {
+	var err error
+	var c ConnectionInformation
+
+	c.NetworkType, err = l.readField()
+	if err != nil {
+		return nil, err
 	}
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if !anyOf(fields[0], "IN") {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[0])
+	if !anyOf(c.NetworkType, "IN") {
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, c.NetworkType)
+	}
+
+	c.AddressType, err = l.readField()
+	if err != nil {
+		return nil, err
 	}
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.7
-	if !anyOf(fields[1], "IP4", "IP6") {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[1])
+	if !anyOf(c.AddressType, "IP4", "IP6") {
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, c.AddressType)
 	}
 
-	connAddr := new(Address)
-	if len(fields) > 2 {
-		connAddr.Address = fields[2]
+	address, err := l.readField()
+	if err != nil {
+		return nil, err
 	}
 
-	return &ConnectionInformation{
-		NetworkType: fields[0],
-		AddressType: fields[1],
-		Address:     connAddr,
-	}, nil
+	c.Address = new(Address) // bug? may be empty!
+	if address != "" {
+		c.Address.Address = address
+	}
+
+	if err := l.nextLine(); err != nil {
+		return nil, err
+	}
+
+	return &c, nil
 }
 
 func unmarshalSessionBandwidth(l *lexer) (stateFn, error) {
@@ -439,97 +452,108 @@ func unmarshalBandwidth(value string) (*Bandwidth, error) {
 }
 
 func unmarshalTiming(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	var err error
+	var td TimeDescription
+
+	td.Timing.StartTime, err = l.readUint64Field()
 	if err != nil {
 		return nil, err
 	}
 
-	fields := strings.Fields(value)
-	if len(fields) < 2 {
-		return nil, fmt.Errorf("%w `t=%v`", errSDPInvalidSyntax, fields)
+	td.Timing.StopTime, err = l.readUint64Field()
+	if err != nil {
+		return nil, err
 	}
 
-	td := TimeDescription{}
-
-	td.Timing.StartTime, err = strconv.ParseUint(fields[0], 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[1])
-	}
-
-	td.Timing.StopTime, err = strconv.ParseUint(fields[1], 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[1])
+	if err := l.nextLine(); err != nil {
+		return nil, err
 	}
 
 	l.desc.TimeDescriptions = append(l.desc.TimeDescriptions, td)
-
 	return sFn[9], nil
 }
 
 func unmarshalRepeatTimes(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	var err error
+	var newRepeatTime RepeatTime
+
+	latestTimeDesc := &l.desc.TimeDescriptions[len(l.desc.TimeDescriptions)-1]
+
+	field, err := l.readField()
 	if err != nil {
 		return nil, err
 	}
 
-	fields := strings.Fields(value)
-	if len(fields) < 3 {
-		return nil, fmt.Errorf("%w `r=%v`", errSDPInvalidSyntax, fields)
-	}
-
-	latestTimeDesc := &l.desc.TimeDescriptions[len(l.desc.TimeDescriptions)-1]
-
-	newRepeatTime := RepeatTime{}
-	newRepeatTime.Interval, err = parseTimeUnits(fields[0])
+	newRepeatTime.Interval, err = parseTimeUnits(field)
 	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields)
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, field)
 	}
 
-	newRepeatTime.Duration, err = parseTimeUnits(fields[1])
+	field, err = l.readField()
 	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields)
+		return nil, err
 	}
 
-	for i := 2; i < len(fields); i++ {
-		offset, err := parseTimeUnits(fields[i])
+	newRepeatTime.Duration, err = parseTimeUnits(field)
+	if err != nil {
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, field)
+	}
+
+	for {
+		field, err := l.readField()
 		if err != nil {
-			return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields)
+			return nil, err
+		}
+		if field == "" {
+			break
+		}
+		offset, err := parseTimeUnits(field)
+		if err != nil {
+			return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, field)
 		}
 		newRepeatTime.Offsets = append(newRepeatTime.Offsets, offset)
 	}
-	latestTimeDesc.RepeatTimes = append(latestTimeDesc.RepeatTimes, newRepeatTime)
 
+	if err := l.nextLine(); err != nil {
+		return nil, err
+	}
+
+	latestTimeDesc.RepeatTimes = append(latestTimeDesc.RepeatTimes, newRepeatTime)
 	return sFn[9], nil
 }
 
 func unmarshalTimeZones(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
-	if err != nil {
-		return nil, err
-	}
-
 	// These fields are transimitted in pairs
 	// z=<adjustment time> <offset> <adjustment time> <offset> ....
 	// so we are making sure that there are actually multiple of 2 total.
-	fields := strings.Fields(value)
-	if len(fields)%2 != 0 {
-		return nil, fmt.Errorf("%w `t=%v`", errSDPInvalidSyntax, fields)
-	}
-
-	for i := 0; i < len(fields); i += 2 {
+	for {
+		var err error
 		var timeZone TimeZone
 
-		timeZone.AdjustmentTime, err = strconv.ParseUint(fields[i], 10, 64)
+		timeZone.AdjustmentTime, err = l.readUint64Field()
 		if err != nil {
-			return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields)
+			return nil, err
 		}
 
-		timeZone.Offset, err = parseTimeUnits(fields[i+1])
+		offset, err := l.readField()
+		if err != nil {
+			return nil, err
+		}
+
+		if offset == "" {
+			break
+		}
+
+		timeZone.Offset, err = parseTimeUnits(offset)
 		if err != nil {
 			return nil, err
 		}
 
 		l.desc.TimeZones = append(l.desc.TimeZones, timeZone)
+	}
+
+	if err := l.nextLine(); err != nil {
+		return nil, err
 	}
 
 	return sFn[13], nil
@@ -565,28 +589,27 @@ func unmarshalSessionAttribute(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaDescription(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	var newMediaDesc MediaDescription
+
+	// <media>
+	field, err := l.readField()
 	if err != nil {
 		return nil, err
 	}
 
-	fields := strings.Fields(value)
-	if len(fields) < 4 {
-		return nil, fmt.Errorf("%w `m=%v`", errSDPInvalidSyntax, fields)
-	}
-
-	newMediaDesc := &MediaDescription{}
-
-	// <media>
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
-	if !anyOf(fields[0], "audio", "video", "text", "application", "message") {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[0])
+	if !anyOf(field, "audio", "video", "text", "application", "message") {
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, field)
 	}
-	newMediaDesc.MediaName.Media = fields[0]
+	newMediaDesc.MediaName.Media = field
 
 	// <port>
-	parts := strings.Split(fields[1], "/")
+	field, err = l.readField()
+	if err != nil {
+		return nil, err
+	}
+	parts := strings.Split(field, "/")
 	newMediaDesc.MediaName.Port.Value, err = parsePort(parts[0])
 	if err != nil {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidPortValue, parts[0])
@@ -601,22 +624,37 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 	}
 
 	// <proto>
+	field, err = l.readField()
+	if err != nil {
+		return nil, err
+	}
+
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
-	for _, proto := range strings.Split(fields[2], "/") {
+	for _, proto := range strings.Split(field, "/") {
 		if !anyOf(proto, "UDP", "RTP", "AVP", "SAVP", "SAVPF", "TLS", "DTLS", "SCTP", "AVPF") {
-			return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[2])
+			return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, field)
 		}
 		newMediaDesc.MediaName.Protos = append(newMediaDesc.MediaName.Protos, proto)
 	}
 
 	// <fmt>...
-	for i := 3; i < len(fields); i++ {
-		newMediaDesc.MediaName.Formats = append(newMediaDesc.MediaName.Formats, fields[i])
+	for {
+		field, err = l.readField()
+		if err != nil {
+			return nil, err
+		}
+		if field == "" {
+			break
+		}
+		newMediaDesc.MediaName.Formats = append(newMediaDesc.MediaName.Formats, field)
 	}
 
-	l.desc.MediaDescriptions = append(l.desc.MediaDescriptions, newMediaDesc)
+	if err := l.nextLine(); err != nil {
+		return nil, err
+	}
 
+	l.desc.MediaDescriptions = append(l.desc.MediaDescriptions, &newMediaDesc)
 	return sFn[12], nil
 }
 
@@ -633,15 +671,11 @@ func unmarshalMediaTitle(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaConnectionInformation(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	var err error
+	latestMediaDesc := l.desc.MediaDescriptions[len(l.desc.MediaDescriptions)-1]
+	latestMediaDesc.ConnectionInformation, err = l.unmarshalConnectionInformation()
 	if err != nil {
 		return nil, err
-	}
-
-	latestMediaDesc := l.desc.MediaDescriptions[len(l.desc.MediaDescriptions)-1]
-	latestMediaDesc.ConnectionInformation, err = unmarshalConnectionInformation(value)
-	if err != nil {
-		return nil, fmt.Errorf("%w `c=%v`", errSDPInvalidSyntax, value)
 	}
 	return sFn[15], nil
 }
