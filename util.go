@@ -3,7 +3,6 @@ package sdp
 import (
 	"errors"
 	"fmt"
-	"io"
 	"sort"
 	"strconv"
 	"strings"
@@ -282,89 +281,6 @@ func (s *SessionDescription) GetPayloadTypeForCodec(wanted Codec) (uint8, error)
 type stateFn func(*lexer) (stateFn, error)
 
 type lexer struct {
+	baseLexer
 	desc *SessionDescription
-	data []byte
-	pos  int
-}
-
-func (l *lexer) unreadByte() error {
-	if l.pos == 0 {
-		return io.EOF
-	}
-	l.pos--
-	return nil
-}
-
-func (l *lexer) readByte() (byte, error) {
-	if l.pos >= len(l.data) {
-		return byte(0), io.EOF
-	}
-	ch := l.data[l.pos]
-	l.pos++
-	return ch, nil
-}
-
-func (l *lexer) readLine() (string, error) {
-	start := l.pos
-	trimRight := 1 // linebreaks
-	for {
-		ch, err := l.readByte()
-		if err != nil {
-			return "", err
-		}
-		if ch == '\r' {
-			trimRight += 1
-		}
-		if ch == '\n' {
-			return string(l.data[start : l.pos-trimRight]), nil
-		}
-	}
-}
-
-func (l *lexer) readString(until byte) (string, error) {
-	start := l.pos
-	for {
-		ch, err := l.readByte()
-		if err != nil {
-			return "", err
-		}
-		if ch == until {
-			return string(l.data[start:l.pos]), nil
-		}
-	}
-}
-
-func (l *lexer) readType() (string, error) {
-	for {
-		b, err := l.readByte()
-		if err != nil {
-			return "", err
-		}
-		if b == '\n' || b == '\r' {
-			continue
-		}
-		if err := l.unreadByte(); err != nil {
-			return "", err
-		}
-
-		key, err := l.readString('=')
-		if err != nil {
-			return key, err
-		}
-
-		if len(key) == 2 {
-			return key, nil
-		}
-
-		return key, fmt.Errorf("%w: %v", errSyntaxError, strconv.Quote(key))
-	}
-}
-
-func indexOf(element string, data ...string) int {
-	for k, v := range data {
-		if element == v {
-			return k
-		}
-	}
-	return -1
 }

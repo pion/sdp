@@ -91,10 +91,9 @@ var (
 // |   s16  |    |    14 |    |     |    |  15 |   |    | 12 |   |   |     |   |   |    |   |    |
 // +--------+----+-------+----+-----+----+-----+---+----+----+---+---+-----+---+---+----+---+----+
 func (s *SessionDescription) Unmarshal(value []byte) (err error) {
-	l := &lexer{
-		desc: s,
-		data: value,
-	}
+	l := new(lexer)
+	l.desc = s
+	l.data = value
 	for state := sFn[1]; state != nil; {
 		state, err = state(l)
 		if err != nil {
@@ -215,30 +214,25 @@ func init() {
 
 func newStateFn(m map[string]stateFn) func(l *lexer) (stateFn, error) {
 	return func(l *lexer) (stateFn, error) {
-		key, err := l.readType()
-		if err == io.EOF && key == "" {
+		typ, err := l.readType()
+		if err == io.EOF && typ == "" {
 			return nil, nil
 		} else if err != nil {
 			return nil, err
 		}
 
-		if fn, ok := m[key]; ok {
+		if fn, ok := m[typ]; ok {
 			return fn, nil
 		}
 
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, typ)
 	}
 }
 
 func unmarshalProtocolVersion(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	version, err := l.readUint64Field()
 	if err != nil {
 		return nil, err
-	}
-
-	version, err := strconv.ParseInt(value, 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, value)
 	}
 
 	// As off the latest draft of the rfc this value is required to be 0.
@@ -247,49 +241,56 @@ func unmarshalProtocolVersion(l *lexer) (stateFn, error) {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, version)
 	}
 
+	if err := l.takeLinebreak(); err != nil {
+		return nil, err
+	}
+
 	return sFn[2], nil
 }
 
 func unmarshalOrigin(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	var err error
+
+	l.desc.Origin.Username, err = l.readStringField()
 	if err != nil {
 		return nil, err
 	}
 
-	fields := strings.Fields(value)
-	if len(fields) != 6 {
-		return nil, fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, fields)
+	l.desc.Origin.SessionID, err = l.readUint64Field()
+	if err != nil {
+		return nil, errSDPInvalidNumericValue
 	}
 
-	sessionID, err := strconv.ParseUint(fields[1], 10, 64)
+	l.desc.Origin.SessionVersion, err = l.readUint64Field()
 	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[1])
+		return nil, errSDPInvalidNumericValue
 	}
 
-	sessionVersion, err := strconv.ParseUint(fields[2], 10, 64)
+	l.desc.Origin.NetworkType, err = l.readStringField()
 	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[2])
+		return nil, err
 	}
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if i := indexOf(fields[3], "IN"); i == -1 {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[3])
+	if !anyOf(l.desc.Origin.NetworkType, "IN") {
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, l.desc.Origin.NetworkType)
+	}
+
+	l.desc.Origin.AddressType, err = l.readStringField()
+	if err != nil {
+		return nil, err
 	}
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.7
-	if i := indexOf(fields[4], "IP4", "IP6"); i == -1 {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[3])
+	if !anyOf(l.desc.Origin.AddressType, "IP4", "IP6") {
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, l.desc.Origin.AddressType)
 	}
 
-	l.desc.Origin = Origin{
-		Username:       fields[0],
-		SessionID:      sessionID,
-		SessionVersion: sessionVersion,
-		NetworkType:    fields[3],
-		AddressType:    fields[4],
-		UnicastAddress: fields[5],
+	l.desc.Origin.UnicastAddress, err = l.readStringField()
+	if err != nil {
+		return nil, err
 	}
 
 	return sFn[3], nil
@@ -373,13 +374,13 @@ func unmarshalConnectionInformation(value string) (*ConnectionInformation, error
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if i := indexOf(fields[0], "IN"); i == -1 {
+	if !anyOf(fields[0], "IN") {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[0])
 	}
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.7
-	if i := indexOf(fields[1], "IP4", "IP6"); i == -1 {
+	if !anyOf(fields[1], "IP4", "IP6") {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[1])
 	}
 
@@ -419,7 +420,7 @@ func unmarshalBandwidth(value string) (*Bandwidth, error) {
 	experimental := strings.HasPrefix(parts[0], "X-")
 	if experimental {
 		parts[0] = strings.TrimPrefix(parts[0], "X-")
-	} else if i := indexOf(parts[0], "CT", "AS"); i == -1 {
+	} else if !anyOf(parts[0], "CT", "AS") {
 		// Set according to currently registered with IANA
 		// https://tools.ietf.org/html/rfc4566#section-5.8
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, parts[0])
@@ -579,7 +580,7 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 	// <media>
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
-	if i := indexOf(fields[0], "audio", "video", "text", "application", "message"); i == -1 {
+	if !anyOf(fields[0], "audio", "video", "text", "application", "message") {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[0])
 	}
 	newMediaDesc.MediaName.Media = fields[0]
@@ -603,7 +604,7 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
 	for _, proto := range strings.Split(fields[2], "/") {
-		if i := indexOf(proto, "UDP", "RTP", "AVP", "SAVP", "SAVPF", "TLS", "DTLS", "SCTP", "AVPF"); i == -1 {
+		if !anyOf(proto, "UDP", "RTP", "AVP", "SAVP", "SAVPF", "TLS", "DTLS", "SCTP", "AVPF") {
 			return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[2])
 		}
 		newMediaDesc.MediaName.Protos = append(newMediaDesc.MediaName.Protos, proto)
