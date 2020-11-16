@@ -699,69 +699,86 @@ func unmarshalTiming(l *lexer) (stateFn, error) {
 }
 
 func unmarshalRepeatTimes(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	var err error
+	var newRepeatTime RepeatTime
+
+	latestTimeDesc := &l.desc.TimeDescriptions[len(l.desc.TimeDescriptions)-1]
+
+	field, err := l.readField()
 	if err != nil {
 		return nil, err
 	}
 
-	fields := strings.Fields(value)
-	if len(fields) < 3 {
-		return nil, fmt.Errorf("%w `r=%v`", errSDPInvalidSyntax, fields)
-	}
-
-	latestTimeDesc := &l.desc.TimeDescriptions[len(l.desc.TimeDescriptions)-1]
-
-	newRepeatTime := RepeatTime{}
-	newRepeatTime.Interval, err = parseTimeUnits(fields[0])
+	newRepeatTime.Interval, err = parseTimeUnits(field)
 	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields)
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, field)
 	}
 
-	newRepeatTime.Duration, err = parseTimeUnits(fields[1])
+	field, err = l.readField()
 	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields)
+		return nil, err
 	}
 
-	for i := 2; i < len(fields); i++ {
-		offset, err := parseTimeUnits(fields[i])
+	newRepeatTime.Duration, err = parseTimeUnits(field)
+	if err != nil {
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, field)
+	}
+
+	for {
+		field, err := l.readField()
 		if err != nil {
-			return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields)
+			return nil, err
+		}
+		if field == "" {
+			break
+		}
+		offset, err := parseTimeUnits(field)
+		if err != nil {
+			return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, field)
 		}
 		newRepeatTime.Offsets = append(newRepeatTime.Offsets, offset)
 	}
-	latestTimeDesc.RepeatTimes = append(latestTimeDesc.RepeatTimes, newRepeatTime)
 
+	if err := l.nextLine(); err != nil {
+		return nil, err
+	}
+
+	latestTimeDesc.RepeatTimes = append(latestTimeDesc.RepeatTimes, newRepeatTime)
 	return s9, nil
 }
 
 func unmarshalTimeZones(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
-	if err != nil {
-		return nil, err
-	}
-
 	// These fields are transimitted in pairs
 	// z=<adjustment time> <offset> <adjustment time> <offset> ....
 	// so we are making sure that there are actually multiple of 2 total.
-	fields := strings.Fields(value)
-	if len(fields)%2 != 0 {
-		return nil, fmt.Errorf("%w `t=%v`", errSDPInvalidSyntax, fields)
-	}
-
-	for i := 0; i < len(fields); i += 2 {
+	for {
+		var err error
 		var timeZone TimeZone
 
-		timeZone.AdjustmentTime, err = strconv.ParseUint(fields[i], 10, 64)
+		timeZone.AdjustmentTime, err = l.readUint64Field()
 		if err != nil {
-			return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields)
+			return nil, err
 		}
 
-		timeZone.Offset, err = parseTimeUnits(fields[i+1])
+		offset, err := l.readField()
+		if err != nil {
+			return nil, err
+		}
+
+		if offset == "" {
+			break
+		}
+
+		timeZone.Offset, err = parseTimeUnits(offset)
 		if err != nil {
 			return nil, err
 		}
 
 		l.desc.TimeZones = append(l.desc.TimeZones, timeZone)
+	}
+
+	if err := l.nextLine(); err != nil {
+		return nil, err
 	}
 
 	return s13, nil
