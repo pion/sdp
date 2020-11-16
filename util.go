@@ -3,6 +3,7 @@ package sdp
 import (
 	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"strconv"
 	"strings"
@@ -292,9 +293,26 @@ func (s *SessionDescription) GetPayloadTypeForCodec(wanted Codec) (uint8, error)
 	return 0, errCodecNotFound
 }
 
+type stateFn func(*lexer) (stateFn, error)
+
 type lexer struct {
 	desc *SessionDescription
 	baseLexer
 }
 
-type stateFn func(*lexer) (stateFn, error)
+type keyToState func(key string) stateFn
+
+func (l *lexer) handleType(fn keyToState) (stateFn, error) {
+	key, err := l.readType()
+	if err == io.EOF && key == "" {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	if res := fn(key); res != nil {
+		return res, nil
+	}
+
+	return nil, l.syntaxError()
+}

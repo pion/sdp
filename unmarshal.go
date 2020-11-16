@@ -3,7 +3,6 @@ package sdp
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net/url"
 	"strconv"
 	"strings"
@@ -105,349 +104,264 @@ func (s *SessionDescription) Unmarshal(value []byte) error {
 }
 
 func s1(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
-	}
-
-	if key == "v=" {
-		return unmarshalProtocolVersion, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+	return l.handleType(func(key string) stateFn {
+		if key == "v=" {
+			return unmarshalProtocolVersion
+		}
+		return nil
+	})
 }
 
 func s2(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
-	}
-
-	if key == "o=" {
-		return unmarshalOrigin, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+	return l.handleType(func(key string) stateFn {
+		if key == "o=" {
+			return unmarshalOrigin
+		}
+		return nil
+	})
 }
 
 func s3(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		return nil, err
-	}
-
-	if key == "s=" {
-		return unmarshalSessionName, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+	return l.handleType(func(key string) stateFn {
+		if key == "s=" {
+			return unmarshalSessionName
+		}
+		return nil
+	})
 }
 
 func s4(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
-	}
-
-	switch key {
-	case "i=":
-		return unmarshalSessionInformation, nil
-	case "u=":
-		return unmarshalURI, nil
-	case "e=":
-		return unmarshalEmail, nil
-	case "p=":
-		return unmarshalPhone, nil
-	case "c=":
-		return unmarshalSessionConnectionInformation, nil
-	case "b=":
-		return unmarshalSessionBandwidth, nil
-	case "t=":
-		return unmarshalTiming, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+	return l.handleType(func(key string) stateFn {
+		switch key {
+		case "i=":
+			return unmarshalSessionInformation
+		case "u=":
+			return unmarshalURI
+		case "e=":
+			return unmarshalEmail
+		case "p=":
+			return unmarshalPhone
+		case "c=":
+			return unmarshalSessionConnectionInformation
+		case "b=":
+			return unmarshalSessionBandwidth
+		case "t=":
+			return unmarshalTiming
+		}
+		return nil
+	})
 }
 
 func s5(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		return nil, err
-	}
-
-	switch key {
-	case "b=":
-		return unmarshalSessionBandwidth, nil
-	case "t=":
-		return unmarshalTiming, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+	return l.handleType(func(key string) stateFn {
+		switch key {
+		case "b=":
+			return unmarshalSessionBandwidth
+		case "t=":
+			return unmarshalTiming
+		}
+		return nil
+	})
 }
 
 func s6(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
-	}
-
-	switch key {
-	case "p=":
-		return unmarshalPhone, nil
-	case "c=":
-		return unmarshalSessionConnectionInformation, nil
-	case "b=":
-		return unmarshalSessionBandwidth, nil
-	case "t=":
-		return unmarshalTiming, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+	return l.handleType(func(key string) stateFn {
+		switch key {
+		case "p=":
+			return unmarshalPhone
+		case "c=":
+			return unmarshalSessionConnectionInformation
+		case "b=":
+			return unmarshalSessionBandwidth
+		case "t=":
+			return unmarshalTiming
+		}
+		return nil
+	})
 }
 
 func s7(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
-	}
-
-	switch key {
-	case "u=":
-		return unmarshalURI, nil
-	case "e=":
-		return unmarshalEmail, nil
-	case "p=":
-		return unmarshalPhone, nil
-	case "c=":
-		return unmarshalSessionConnectionInformation, nil
-	case "b=":
-		return unmarshalSessionBandwidth, nil
-	case "t=":
-		return unmarshalTiming, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+	return l.handleType(func(key string) stateFn {
+		switch key {
+		case "u=":
+			return unmarshalURI
+		case "e=":
+			return unmarshalEmail
+		case "p=":
+			return unmarshalPhone
+		case "c=":
+			return unmarshalSessionConnectionInformation
+		case "b=":
+			return unmarshalSessionBandwidth
+		case "t=":
+			return unmarshalTiming
+		}
+		return nil
+	})
 }
 
 func s8(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
-	}
-
-	switch key {
-	case "c=":
-		return unmarshalSessionConnectionInformation, nil
-	case "b=":
-		return unmarshalSessionBandwidth, nil
-	case "t=":
-		return unmarshalTiming, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+	return l.handleType(func(key string) stateFn {
+		switch key {
+		case "c=":
+			return unmarshalSessionConnectionInformation
+		case "b=":
+			return unmarshalSessionBandwidth
+		case "t=":
+			return unmarshalTiming
+		}
+		return nil
+	})
 }
 
 func s9(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		if err == io.EOF && key == "" {
-			return nil, nil
+	return l.handleType(func(key string) stateFn {
+		switch key {
+		case "z=":
+			return unmarshalTimeZones
+		case "k=":
+			return unmarshalSessionEncryptionKey
+		case "a=":
+			return unmarshalSessionAttribute
+		case "r=":
+			return unmarshalRepeatTimes
+		case "t=":
+			return unmarshalTiming
+		case "m=":
+			return unmarshalMediaDescription
 		}
-		return nil, err
-	}
-
-	switch key {
-	case "z=":
-		return unmarshalTimeZones, nil
-	case "k=":
-		return unmarshalSessionEncryptionKey, nil
-	case "a=":
-		return unmarshalSessionAttribute, nil
-	case "r=":
-		return unmarshalRepeatTimes, nil
-	case "t=":
-		return unmarshalTiming, nil
-	case "m=":
-		return unmarshalMediaDescription, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+		return nil
+	})
 }
 
 func s10(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
-	}
-
-	switch key {
-	case "e=":
-		return unmarshalEmail, nil
-	case "p=":
-		return unmarshalPhone, nil
-	case "c=":
-		return unmarshalSessionConnectionInformation, nil
-	case "b=":
-		return unmarshalSessionBandwidth, nil
-	case "t=":
-		return unmarshalTiming, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+	return l.handleType(func(key string) stateFn {
+		switch key {
+		case "e=":
+			return unmarshalEmail
+		case "p=":
+			return unmarshalPhone
+		case "c=":
+			return unmarshalSessionConnectionInformation
+		case "b=":
+			return unmarshalSessionBandwidth
+		case "t=":
+			return unmarshalTiming
+		}
+		return nil
+	})
 }
 
 func s11(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		if err == io.EOF && key == "" {
-			return nil, nil
+	return l.handleType(func(key string) stateFn {
+		switch key {
+		case "a=":
+			return unmarshalSessionAttribute
+		case "m=":
+			return unmarshalMediaDescription
 		}
-		return nil, err
-	}
-
-	switch key {
-	case "a=":
-		return unmarshalSessionAttribute, nil
-	case "m=":
-		return unmarshalMediaDescription, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+		return nil
+	})
 }
 
 func s12(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		if err == io.EOF && key == "" {
-			return nil, nil
+	return l.handleType(func(key string) stateFn {
+		switch key {
+		case "a=":
+			return unmarshalMediaAttribute
+		case "k=":
+			return unmarshalMediaEncryptionKey
+		case "b=":
+			return unmarshalMediaBandwidth
+		case "c=":
+			return unmarshalMediaConnectionInformation
+		case "i=":
+			return unmarshalMediaTitle
+		case "m=":
+			return unmarshalMediaDescription
 		}
-		return nil, err
-	}
-
-	switch key {
-	case "a=":
-		return unmarshalMediaAttribute, nil
-	case "k=":
-		return unmarshalMediaEncryptionKey, nil
-	case "b=":
-		return unmarshalMediaBandwidth, nil
-	case "c=":
-		return unmarshalMediaConnectionInformation, nil
-	case "i=":
-		return unmarshalMediaTitle, nil
-	case "m=":
-		return unmarshalMediaDescription, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+		return nil
+	})
 }
 
 func s13(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		if err == io.EOF && key == "" {
-			return nil, nil
+	return l.handleType(func(key string) stateFn {
+		switch key {
+		case "a=":
+			return unmarshalSessionAttribute
+		case "k=":
+			return unmarshalSessionEncryptionKey
+		case "m=":
+			return unmarshalMediaDescription
 		}
-		return nil, err
-	}
-
-	switch key {
-	case "a=":
-		return unmarshalSessionAttribute, nil
-	case "k=":
-		return unmarshalSessionEncryptionKey, nil
-	case "m=":
-		return unmarshalMediaDescription, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+		return nil
+	})
 }
 
 func s14(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		if err == io.EOF && key == "" {
-			return nil, nil
+	return l.handleType(func(key string) stateFn {
+		switch key {
+		case "a=":
+			return unmarshalMediaAttribute
+		case "k=":
+			// Non-spec ordering
+			return unmarshalMediaEncryptionKey
+		case "b=":
+			// Non-spec ordering
+			return unmarshalMediaBandwidth
+		case "c=":
+			// Non-spec ordering
+			return unmarshalMediaConnectionInformation
+		case "i=":
+			// Non-spec ordering
+			return unmarshalMediaTitle
+		case "m=":
+			return unmarshalMediaDescription
 		}
-		return nil, err
-	}
-
-	switch key {
-	case "a=":
-		return unmarshalMediaAttribute, nil
-	case "k=":
-		// Non-spec ordering
-		return unmarshalMediaEncryptionKey, nil
-	case "b=":
-		// Non-spec ordering
-		return unmarshalMediaBandwidth, nil
-	case "c=":
-		// Non-spec ordering
-		return unmarshalMediaConnectionInformation, nil
-	case "i=":
-		// Non-spec ordering
-		return unmarshalMediaTitle, nil
-	case "m=":
-		return unmarshalMediaDescription, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+		return nil
+	})
 }
 
 func s15(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		if err == io.EOF && key == "" {
-			return nil, nil
+	return l.handleType(func(key string) stateFn {
+		switch key {
+		case "a=":
+			return unmarshalMediaAttribute
+		case "k=":
+			return unmarshalMediaEncryptionKey
+		case "b=":
+			return unmarshalMediaBandwidth
+		case "c=":
+			return unmarshalMediaConnectionInformation
+		case "i=":
+			// Non-spec ordering
+			return unmarshalMediaTitle
+		case "m=":
+			return unmarshalMediaDescription
 		}
-		return nil, err
-	}
-
-	switch key {
-	case "a=":
-		return unmarshalMediaAttribute, nil
-	case "k=":
-		return unmarshalMediaEncryptionKey, nil
-	case "b=":
-		return unmarshalMediaBandwidth, nil
-	case "c=":
-		return unmarshalMediaConnectionInformation, nil
-	case "i=":
-		// Non-spec ordering
-		return unmarshalMediaTitle, nil
-	case "m=":
-		return unmarshalMediaDescription, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+		return nil
+	})
 }
 
 func s16(l *lexer) (stateFn, error) {
-	key, err := l.readType()
-	if err != nil {
-		if err == io.EOF && key == "" {
-			return nil, nil
+	return l.handleType(func(key string) stateFn {
+		switch key {
+		case "a=":
+			return unmarshalMediaAttribute
+		case "k=":
+			return unmarshalMediaEncryptionKey
+		case "c=":
+			return unmarshalMediaConnectionInformation
+		case "b=":
+			return unmarshalMediaBandwidth
+		case "i=":
+			// Non-spec ordering
+			return unmarshalMediaTitle
+		case "m=":
+			return unmarshalMediaDescription
 		}
-		return nil, err
-	}
-
-	switch key {
-	case "a=":
-		return unmarshalMediaAttribute, nil
-	case "k=":
-		return unmarshalMediaEncryptionKey, nil
-	case "c=":
-		return unmarshalMediaConnectionInformation, nil
-	case "b=":
-		return unmarshalMediaBandwidth, nil
-	case "i=":
-		// Non-spec ordering
-		return unmarshalMediaTitle, nil
-	case "m=":
-		return unmarshalMediaDescription, nil
-	}
-
-	return nil, fmt.Errorf("%w `%v`", errSDPInvalidSyntax, key)
+		return nil
+	})
 }
 
 func unmarshalProtocolVersion(l *lexer) (stateFn, error) {
