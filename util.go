@@ -305,38 +305,33 @@ func (l *lexer) readByte() (byte, error) {
 }
 
 func (l *lexer) readLine() (string, error) {
-	var b strings.Builder
-	b.Grow(200)
+	start := l.pos
+	trimRight := 1 // linebreaks
 	for {
 		ch, err := l.readByte()
 		if err != nil {
 			return "", err
 		}
 		if ch == '\r' {
-			continue
+			trimRight += 1
 		}
 		if ch == '\n' {
-			break
+			return string(l.data[start : l.pos-trimRight]), nil
 		}
-		b.WriteByte(ch)
 	}
-	return b.String(), nil
 }
 
 func (l *lexer) readString(until byte) (string, error) {
-	var b strings.Builder
-	b.Grow(20)
+	start := l.pos
 	for {
 		ch, err := l.readByte()
 		if err != nil {
 			return "", err
 		}
-		b.WriteByte(ch)
 		if ch == until {
-			break
+			return string(l.data[start:l.pos]), nil
 		}
 	}
-	return b.String(), nil
 }
 
 func (l *lexer) readType() (string, error) {
@@ -363,19 +358,6 @@ func (l *lexer) readType() (string, error) {
 
 		return key, fmt.Errorf("%w: %v", errSyntaxError, strconv.Quote(key))
 	}
-}
-
-func (l *lexer) readValue() (string, error) {
-	line, err := l.readLine()
-	if err != nil && err != io.EOF {
-		return line, err
-	}
-
-	if len(line) == 0 {
-		return line, io.EOF
-	}
-
-	return line, nil
 }
 
 func indexOf(element string, data ...string) int {

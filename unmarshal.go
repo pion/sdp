@@ -90,16 +90,15 @@ var (
 // |   s15  |    |    14 |    |     | 15 |     |   |    | 12 |   |   |     |   |   |    |   |    |
 // |   s16  |    |    14 |    |     |    |  15 |   |    | 12 |   |   |     |   |   |    |   |    |
 // +--------+----+-------+----+-----+----+-----+---+----+----+---+---+-----+---+---+----+---+----+
-func (s *SessionDescription) Unmarshal(value []byte) error {
+func (s *SessionDescription) Unmarshal(value []byte) (err error) {
 	l := &lexer{
 		desc: s,
 		data: value,
 	}
 	for state := sFn[1]; state != nil; {
-		var err error
 		state, err = state(l)
 		if err != nil {
-			return err
+			return
 		}
 	}
 	return nil
@@ -109,19 +108,19 @@ var sFn [16 + 1]func(l *lexer) (stateFn, error)
 
 func init() {
 	for i, m := range []map[string]stateFn{
-		{
+		0: {
 			// skip zero index
 		},
-		{
+		1: {
 			"v=": unmarshalProtocolVersion,
 		},
-		{
+		2: {
 			"o=": unmarshalOrigin,
 		},
-		{
+		3: {
 			"s=": unmarshalSessionName,
 		},
-		{
+		4: {
 			"b=": unmarshalSessionBandwidth,
 			"c=": unmarshalSessionConnectionInformation,
 			"e=": unmarshalEmail,
@@ -130,17 +129,17 @@ func init() {
 			"t=": unmarshalTiming,
 			"u=": unmarshalURI,
 		},
-		{
+		5: {
 			"b=": unmarshalSessionBandwidth,
 			"t=": unmarshalTiming,
 		},
-		{
+		6: {
 			"b=": unmarshalSessionBandwidth,
 			"c=": unmarshalSessionConnectionInformation,
 			"p=": unmarshalPhone,
 			"t=": unmarshalTiming,
 		},
-		{
+		7: {
 			"b=": unmarshalSessionBandwidth,
 			"c=": unmarshalSessionConnectionInformation,
 			"e=": unmarshalEmail,
@@ -148,12 +147,12 @@ func init() {
 			"t=": unmarshalTiming,
 			"u=": unmarshalURI,
 		},
-		{
+		8: {
 			"b=": unmarshalSessionBandwidth,
 			"c=": unmarshalSessionConnectionInformation,
 			"t=": unmarshalTiming,
 		},
-		{
+		9: {
 			"a=": unmarshalSessionAttribute,
 			"k=": unmarshalSessionEncryptionKey,
 			"m=": unmarshalMediaDescription,
@@ -161,18 +160,18 @@ func init() {
 			"t=": unmarshalTiming,
 			"z=": unmarshalTimeZones,
 		},
-		{
+		10: {
 			"b=": unmarshalSessionBandwidth,
 			"c=": unmarshalSessionConnectionInformation,
 			"e=": unmarshalEmail,
 			"p=": unmarshalPhone,
 			"t=": unmarshalTiming,
 		},
-		{
+		11: {
 			"a=": unmarshalSessionAttribute,
 			"m=": unmarshalMediaDescription,
 		},
-		{
+		12: {
 			"a=": unmarshalMediaAttribute,
 			"b=": unmarshalMediaBandwidth,
 			"c=": unmarshalMediaConnectionInformation,
@@ -180,12 +179,12 @@ func init() {
 			"k=": unmarshalMediaEncryptionKey,
 			"m=": unmarshalMediaDescription,
 		},
-		{
+		13: {
 			"a=": unmarshalSessionAttribute,
 			"k=": unmarshalSessionEncryptionKey,
 			"m=": unmarshalMediaDescription,
 		},
-		{
+		14: {
 			"a=": unmarshalMediaAttribute,
 			"b=": unmarshalMediaBandwidth,             // Non-spec ordering
 			"c=": unmarshalMediaConnectionInformation, // Non-spec ordering
@@ -193,7 +192,7 @@ func init() {
 			"k=": unmarshalMediaEncryptionKey,         // Non-spec ordering
 			"m=": unmarshalMediaDescription,
 		},
-		{
+		15: {
 			"a=": unmarshalMediaAttribute,
 			"b=": unmarshalMediaBandwidth,
 			"c=": unmarshalMediaConnectionInformation,
@@ -201,7 +200,7 @@ func init() {
 			"k=": unmarshalMediaEncryptionKey,
 			"m=": unmarshalMediaDescription,
 		},
-		{
+		16: {
 			"a=": unmarshalMediaAttribute,
 			"b=": unmarshalMediaBandwidth,
 			"c=": unmarshalMediaConnectionInformation,
@@ -217,10 +216,9 @@ func init() {
 func newStateFn(m map[string]stateFn) func(l *lexer) (stateFn, error) {
 	return func(l *lexer) (stateFn, error) {
 		key, err := l.readType()
-		if err != nil {
-			if err == io.EOF && key == "" {
-				return nil, nil
-			}
+		if err == io.EOF && key == "" {
+			return nil, nil
+		} else if err != nil {
 			return nil, err
 		}
 
@@ -233,7 +231,7 @@ func newStateFn(m map[string]stateFn) func(l *lexer) (stateFn, error) {
 }
 
 func unmarshalProtocolVersion(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +251,7 @@ func unmarshalProtocolVersion(l *lexer) (stateFn, error) {
 }
 
 func unmarshalOrigin(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +296,7 @@ func unmarshalOrigin(l *lexer) (stateFn, error) {
 }
 
 func unmarshalSessionName(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +306,7 @@ func unmarshalSessionName(l *lexer) (stateFn, error) {
 }
 
 func unmarshalSessionInformation(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +317,7 @@ func unmarshalSessionInformation(l *lexer) (stateFn, error) {
 }
 
 func unmarshalURI(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -333,7 +331,7 @@ func unmarshalURI(l *lexer) (stateFn, error) {
 }
 
 func unmarshalEmail(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -344,7 +342,7 @@ func unmarshalEmail(l *lexer) (stateFn, error) {
 }
 
 func unmarshalPhone(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +353,7 @@ func unmarshalPhone(l *lexer) (stateFn, error) {
 }
 
 func unmarshalSessionConnectionInformation(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +396,7 @@ func unmarshalConnectionInformation(value string) (*ConnectionInformation, error
 }
 
 func unmarshalSessionBandwidth(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -440,7 +438,7 @@ func unmarshalBandwidth(value string) (*Bandwidth, error) {
 }
 
 func unmarshalTiming(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -468,7 +466,7 @@ func unmarshalTiming(l *lexer) (stateFn, error) {
 }
 
 func unmarshalRepeatTimes(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +502,7 @@ func unmarshalRepeatTimes(l *lexer) (stateFn, error) {
 }
 
 func unmarshalTimeZones(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -537,7 +535,7 @@ func unmarshalTimeZones(l *lexer) (stateFn, error) {
 }
 
 func unmarshalSessionEncryptionKey(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -548,7 +546,7 @@ func unmarshalSessionEncryptionKey(l *lexer) (stateFn, error) {
 }
 
 func unmarshalSessionAttribute(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -566,7 +564,7 @@ func unmarshalSessionAttribute(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaDescription(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -622,7 +620,7 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaTitle(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -634,7 +632,7 @@ func unmarshalMediaTitle(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaConnectionInformation(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -648,7 +646,7 @@ func unmarshalMediaConnectionInformation(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaBandwidth(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -663,7 +661,7 @@ func unmarshalMediaBandwidth(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaEncryptionKey(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
@@ -675,7 +673,7 @@ func unmarshalMediaEncryptionKey(l *lexer) (stateFn, error) {
 }
 
 func unmarshalMediaAttribute(l *lexer) (stateFn, error) {
-	value, err := l.readValue()
+	value, err := l.readLine()
 	if err != nil {
 		return nil, err
 	}
