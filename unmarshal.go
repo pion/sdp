@@ -474,45 +474,52 @@ func unmarshalProtocolVersion(l *lexer) (stateFn, error) {
 }
 
 func unmarshalOrigin(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	var err error
+
+	l.desc.Origin.Username, err = l.readField()
 	if err != nil {
 		return nil, err
 	}
 
-	fields := strings.Fields(value)
-	if len(fields) != 6 {
-		return nil, fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, fields)
+	l.desc.Origin.SessionID, err = l.readUint64Field()
+	if err != nil {
+		return nil, err
 	}
 
-	sessionID, err := strconv.ParseUint(fields[1], 10, 64)
+	l.desc.Origin.SessionVersion, err = l.readUint64Field()
 	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[1])
+		return nil, err
 	}
 
-	sessionVersion, err := strconv.ParseUint(fields[2], 10, 64)
+	l.desc.Origin.NetworkType, err = l.readField()
 	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[2])
+		return nil, err
 	}
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if !anyOf(fields[3], "IN") {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[3])
+	if !anyOf(l.desc.Origin.NetworkType, "IN") {
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, l.desc.Origin.NetworkType)
+	}
+
+	l.desc.Origin.AddressType, err = l.readField()
+	if err != nil {
+		return nil, err
 	}
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.7
-	if !anyOf(fields[4], "IP4", "IP6") {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[3])
+	if !anyOf(l.desc.Origin.AddressType, "IP4", "IP6") {
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, l.desc.Origin.AddressType)
 	}
 
-	l.desc.Origin = Origin{
-		Username:       fields[0],
-		SessionID:      sessionID,
-		SessionVersion: sessionVersion,
-		NetworkType:    fields[3],
-		AddressType:    fields[4],
-		UnicastAddress: fields[5],
+	l.desc.Origin.UnicastAddress, err = l.readField()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := l.nextLine(); err != nil {
+		return nil, err
 	}
 
 	return s3, nil
