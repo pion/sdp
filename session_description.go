@@ -65,8 +65,6 @@ type SessionDescription struct {
 
 	// https://tools.ietf.org/html/rfc4566#section-5.14
 	MediaDescriptions []*MediaDescription
-
-	cachedCodecs map[uint8]Codec
 }
 
 // Attribute returns the value of an attribute and if it exists

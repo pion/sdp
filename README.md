@@ -52,6 +52,7 @@ Check out the **[contributing wiki](https://github.com/pion/webrtc/wiki/Contribu
 * [Kory Miller](https://github.com/jbrady42/korymiller1489)
 * [ZHENK](https://github.com/scorpionknifes)
 * [Tarrence van As](https://github.com/tarrencev)
+* [Maxim Oransky](https://github.com/sdfsdhgjkbmnmxc)
 
 ### License
 MIT License - see [LICENSE](LICENSE) for full text

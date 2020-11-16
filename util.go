@@ -184,43 +184,41 @@ var codecParsers = map[string]codecFn{
 }
 
 func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
-	if s.cachedCodecs == nil {
-		s.cachedCodecs = make(map[uint8]Codec)
-		for _, m := range s.MediaDescriptions {
-			for _, a := range m.Attributes {
-				attr := a.String()
-				if fn, ok := codecParsers[strings.SplitN(attr, ":", 2)[0]]; ok {
-					codec, err := fn(attr)
-					if err != nil {
-						continue
-					}
-
-					saved := s.cachedCodecs[codec.PayloadType]
-
-					if saved.PayloadType == 0 {
-						saved.PayloadType = codec.PayloadType
-					}
-					if saved.Name == "" {
-						saved.Name = codec.Name
-					}
-					if saved.ClockRate == 0 {
-						saved.ClockRate = codec.ClockRate
-					}
-					if saved.EncodingParameters == "" {
-						saved.EncodingParameters = codec.EncodingParameters
-					}
-					if saved.Fmtp == "" {
-						saved.Fmtp = codec.Fmtp
-					}
-
-					saved.RTCPFeedback = append(saved.RTCPFeedback, codec.RTCPFeedback...)
-
-					s.cachedCodecs[saved.PayloadType] = saved
+	codecs := make(map[uint8]Codec)
+	for _, m := range s.MediaDescriptions {
+		for _, a := range m.Attributes {
+			attr := a.String()
+			if fn, ok := codecParsers[strings.SplitN(attr, ":", 2)[0]]; ok {
+				codec, err := fn(attr)
+				if err != nil {
+					continue
 				}
+
+				saved := codecs[codec.PayloadType]
+
+				if saved.PayloadType == 0 {
+					saved.PayloadType = codec.PayloadType
+				}
+				if saved.Name == "" {
+					saved.Name = codec.Name
+				}
+				if saved.ClockRate == 0 {
+					saved.ClockRate = codec.ClockRate
+				}
+				if saved.EncodingParameters == "" {
+					saved.EncodingParameters = codec.EncodingParameters
+				}
+				if saved.Fmtp == "" {
+					saved.Fmtp = codec.Fmtp
+				}
+
+				saved.RTCPFeedback = append(saved.RTCPFeedback, codec.RTCPFeedback...)
+
+				codecs[saved.PayloadType] = saved
 			}
 		}
 	}
-	return s.cachedCodecs
+	return codecs
 }
 
 func equivalentFmtp(want, got string) bool {
