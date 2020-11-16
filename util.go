@@ -177,56 +177,52 @@ func parseRtcpFb(rtcpFb string) (Codec, error) {
 	return codec, nil
 }
 
-func mergeCodecs(codec Codec, codecs map[uint8]Codec) {
-	savedCodec := codecs[codec.PayloadType]
+type codecFn func(string) (Codec, error)
 
-	if savedCodec.PayloadType == 0 {
-		savedCodec.PayloadType = codec.PayloadType
-	}
-	if savedCodec.Name == "" {
-		savedCodec.Name = codec.Name
-	}
-	if savedCodec.ClockRate == 0 {
-		savedCodec.ClockRate = codec.ClockRate
-	}
-	if savedCodec.EncodingParameters == "" {
-		savedCodec.EncodingParameters = codec.EncodingParameters
-	}
-	if savedCodec.Fmtp == "" {
-		savedCodec.Fmtp = codec.Fmtp
-	}
-	savedCodec.RTCPFeedback = append(savedCodec.RTCPFeedback, codec.RTCPFeedback...)
-
-	codecs[savedCodec.PayloadType] = savedCodec
+var codecParsers = map[string]codecFn{
+	"rtpmap":  parseRtpmap,
+	"fmtp":    parseFmtp,
+	"rtcp-fb": parseRtcpFb,
 }
 
 func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
-	codecs := make(map[uint8]Codec)
+	if s.cachedCodecs == nil {
+		s.cachedCodecs = make(map[uint8]Codec)
+		for _, m := range s.MediaDescriptions {
+			for _, a := range m.Attributes {
+				attr := a.String()
+				if fn, ok := codecParsers[strings.SplitN(attr, ":", 2)[0]]; ok {
+					codec, err := fn(attr)
+					if err != nil {
+						continue
+					}
 
-	for _, m := range s.MediaDescriptions {
-		for _, a := range m.Attributes {
-			attr := a.String()
-			switch {
-			case strings.HasPrefix(attr, "rtpmap:"):
-				codec, err := parseRtpmap(attr)
-				if err == nil {
-					mergeCodecs(codec, codecs)
-				}
-			case strings.HasPrefix(attr, "fmtp:"):
-				codec, err := parseFmtp(attr)
-				if err == nil {
-					mergeCodecs(codec, codecs)
-				}
-			case strings.HasPrefix(attr, "rtcp-fb:"):
-				codec, err := parseRtcpFb(attr)
-				if err == nil {
-					mergeCodecs(codec, codecs)
+					saved := s.cachedCodecs[codec.PayloadType]
+
+					if saved.PayloadType == 0 {
+						saved.PayloadType = codec.PayloadType
+					}
+					if saved.Name == "" {
+						saved.Name = codec.Name
+					}
+					if saved.ClockRate == 0 {
+						saved.ClockRate = codec.ClockRate
+					}
+					if saved.EncodingParameters == "" {
+						saved.EncodingParameters = codec.EncodingParameters
+					}
+					if saved.Fmtp == "" {
+						saved.Fmtp = codec.Fmtp
+					}
+
+					saved.RTCPFeedback = append(saved.RTCPFeedback, codec.RTCPFeedback...)
+
+					s.cachedCodecs[saved.PayloadType] = saved
 				}
 			}
 		}
 	}
-
-	return codecs
+	return s.cachedCodecs
 }
 
 func equivalentFmtp(want, got string) bool {
@@ -252,20 +248,10 @@ func equivalentFmtp(want, got string) bool {
 }
 
 func codecsMatch(wanted, got Codec) bool {
-	if wanted.Name != "" && !strings.EqualFold(wanted.Name, got.Name) {
-		return false
-	}
-	if wanted.ClockRate != 0 && wanted.ClockRate != got.ClockRate {
-		return false
-	}
-	if wanted.EncodingParameters != "" && wanted.EncodingParameters != got.EncodingParameters {
-		return false
-	}
-	if wanted.Fmtp != "" && !equivalentFmtp(wanted.Fmtp, got.Fmtp) {
-		return false
-	}
-
-	return true
+	return !((wanted.Name != "" && !strings.EqualFold(wanted.Name, got.Name)) ||
+		(wanted.ClockRate != 0 && wanted.ClockRate != got.ClockRate) ||
+		(wanted.EncodingParameters != "" && wanted.EncodingParameters != got.EncodingParameters) ||
+		wanted.Fmtp != "" && !equivalentFmtp(wanted.Fmtp, got.Fmtp))
 }
 
 // GetCodecForPayloadType scans the SessionDescription for the given payload type and returns the codec
@@ -310,7 +296,7 @@ func readType(input *bufio.Reader) (string, error) {
 		if b == '\n' || b == '\r' {
 			continue
 		}
-		if err = input.UnreadByte(); err != nil {
+		if err := input.UnreadByte(); err != nil {
 			return "", err
 		}
 
@@ -319,12 +305,11 @@ func readType(input *bufio.Reader) (string, error) {
 			return key, err
 		}
 
-		switch len(key) {
-		case 2:
+		if len(key) == 2 {
 			return key, nil
-		default:
-			return key, fmt.Errorf("%w: %v", errSyntaxError, strconv.Quote(key))
 		}
+
+		return key, fmt.Errorf("%w: %v", errSyntaxError, strconv.Quote(key))
 	}
 }
 
