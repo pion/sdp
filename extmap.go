@@ -18,6 +18,7 @@ const (
 	TransportCCURI     = "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"
 	SDESMidURI         = "urn:ietf:params:rtp-hdrext:sdes:mid"
 	SDESRTPStreamIDURI = "urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id"
+	AudioLevelURI      = "urn:ietf:params:rtp-hdrext:ssrc-audio-level"
 )
 
 // ExtMap represents the activation of a single RTP header extension
