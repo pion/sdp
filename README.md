@@ -54,6 +54,7 @@ Check out the **[contributing wiki](https://github.com/pion/webrtc/wiki/Contribu
 * [Tarrence van As](https://github.com/tarrencev)
 * [Maxim Oransky](https://github.com/sdfsdhgjkbmnmxc)
 * [Graham King](https://github.com/grahamking/)
+* [Brendan Abolivier](https://github.com/babolivier)
 
 ### License
 MIT License - see [LICENSE](LICENSE) for full text
