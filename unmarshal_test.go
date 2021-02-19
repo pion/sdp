@@ -133,7 +133,10 @@ const (
 
 	MediaBandwidthSDP = MediaNameSDP +
 		"b=X-YZ:128\r\n" +
-		"b=AS:12345\r\n"
+		"b=AS:12345\r\n" +
+		"b=TIAS:12345\r\n" +
+		"b=RS:12345\r\n" +
+		"b=RR:12345\r\n"
 
 	MediaEncryptionKeySDP = MediaNameSDP +
 		"k=prompt\r\n"
