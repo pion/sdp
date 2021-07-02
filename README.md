@@ -32,29 +32,5 @@ If you need commercial support or don't want to use public methods you can conta
 ### Contributing
 Check out the **[contributing wiki](https://github.com/pion/webrtc/wiki/Contributing)** to join the group of amazing people making this project possible:
 
-* [John Bradley](https://github.com/kc5nra) - *Original Author*
-* [Sean DuBois](https://github.com/Sean-Der) - *Original Author*
-* [Michiel De Backker](https://github.com/backkem) - *Public API, Initialization*
-* [Konstantin Itskov](https://github.com/trivigy) - *Fix documentation*
-* [chenkaiC4](https://github.com/chenkaiC4) - *Fix GolangCI Linter*
-* [Woodrow Douglass](https://github.com/wdouglass) *RTCP, RTP improvements, G.722 support, Bugfixes*
-* [Michael MacDonald](https://github.com/mjmac)
-* [Max Hawkins](https://github.com/maxhawkins)
-* [mchlrhw](https://github.com/mchlrhw)
-* [Hugo Arregui](https://github.com/hugoArregui)
-* [Guilherme Souza](https://github.com/gqgs)
-* [adwpc](https://github.com/adwpc) - *extmap add transport-cc*
-* [Atsushi Watanabe](https://github.com/at-wat)
-* [Luke S](https://github.com/encounter)
-* [Jerko Steiner](https://github.com/jeremija)
-* [Roman Romanenko](https://github.com/r-novel)
-* [Jason Brady](https://github.com/jbrady42)
-* [Kory Miller](https://github.com/jbrady42/korymiller1489)
-* [ZHENK](https://github.com/scorpionknifes)
-* [Tarrence van As](https://github.com/tarrencev)
-* [Maxim Oransky](https://github.com/sdfsdhgjkbmnmxc)
-* [Graham King](https://github.com/grahamking/)
-* [Brendan Abolivier](https://github.com/babolivier)
-
 ### License
 MIT License - see [LICENSE](LICENSE) for full text
