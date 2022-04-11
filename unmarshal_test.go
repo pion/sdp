@@ -105,7 +105,8 @@ const (
 
 	MediaNameSDP = TimingSDP +
 		"m=video 51372 RTP/AVP 99\r\n" +
-		"m=audio 54400 RTP/SAVPF 0 96\r\n"
+		"m=audio 54400 RTP/SAVPF 0 96\r\n" +
+		"m=message 5028 TCP/MSRP *\r\n"
 
 	MediaNameSDPExtraCRLF = MediaNameSDP +
 		"\r\n"
