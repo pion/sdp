@@ -21,6 +21,7 @@ Max Hawkins <maxhawkins@gmail.com>
 Maxim Oransky <maxim.oransky@gmail.com>
 mchlrhw <4028654+mchlrhw@users.noreply.github.com>
 Michael MacDonald <mike.macdonald@savantsystems.com>
+Mustafa Navruz <mustafanavruz@gmail.com>
 Roman Romanenko <romandafe94@gmail.com>
 Sean DuBois <seaduboi@amazon.com>
 Sean DuBois <sean@siobud.com>
