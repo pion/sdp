@@ -50,7 +50,7 @@ func (l *baseLexer) readByte() (byte, error) {
 func (l *baseLexer) nextLine() error {
 	for {
 		ch, err := l.readByte()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		} else if err != nil {
 			return err
@@ -64,7 +64,7 @@ func (l *baseLexer) nextLine() error {
 func (l *baseLexer) readWhitespace() error {
 	for {
 		ch, err := l.readByte()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		} else if err != nil {
 			return err
@@ -78,7 +78,7 @@ func (l *baseLexer) readWhitespace() error {
 func (l *baseLexer) readUint64Field() (i uint64, err error) {
 	for {
 		ch, err := l.readByte()
-		if err == io.EOF && i > 0 {
+		if errors.Is(err, io.EOF) && i > 0 {
 			break
 		} else if err != nil {
 			return i, err
@@ -130,11 +130,11 @@ func (l *baseLexer) readUint64Field() (i uint64, err error) {
 // Returns next field on this line or empty string if no more fields on line
 func (l *baseLexer) readField() (string, error) {
 	start := l.pos
-	stop := start
+	var stop int
 	for {
 		stop = l.pos
 		ch, err := l.readByte()
-		if err == io.EOF && stop > start {
+		if errors.Is(err, io.EOF) && stop > start {
 			break
 		} else if err != nil {
 			return "", err

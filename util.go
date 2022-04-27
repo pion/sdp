@@ -304,8 +304,8 @@ type keyToState func(key string) stateFn
 
 func (l *lexer) handleType(fn keyToState) (stateFn, error) {
 	key, err := l.readType()
-	if err == io.EOF && key == "" {
-		return nil, nil
+	if errors.Is(err, io.EOF) && key == "" {
+		return nil, nil //nolint:nilnil
 	} else if err != nil {
 		return nil, err
 	}
