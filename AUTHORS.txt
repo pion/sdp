@@ -8,6 +8,7 @@ Atsushi Watanabe <atsushi.w@ieee.org>
 backkem <mail@backkem.me>
 Brendan Abolivier <babolivier@matrix.org>
 chenkaiC4 <chenkaic4@gmail.com>
+Daniele Sluijters <daenney@users.noreply.github.com>
 Graham King <graham@gkgk.org>
 Guilherme <gqgs@protonmail.com>
 Hugo Arregui <hugo.arregui@gmail.com>
