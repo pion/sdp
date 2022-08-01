@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 )
 
 var errDocumentStart = errors.New("already on document start")
@@ -17,8 +18,7 @@ func (e syntaxError) Error() string {
 	if e.i < 0 {
 		e.i = 0
 	}
-	head, middle, tail := e.s[:e.i], e.s[e.i:e.i+1], e.s[e.i+1:]
-	return fmt.Sprintf("%s --> %s <-- %s", head, middle, tail)
+	return fmt.Sprintf("sdp: syntax error at pos %d: %s", e.i, strconv.QuoteToASCII(e.s[e.i:e.i+1]))
 }
 
 type baseLexer struct {
