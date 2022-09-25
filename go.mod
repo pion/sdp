@@ -1,6 +1,6 @@
 module github.com/pion/sdp/v3
 
-go 1.13
+go 1.19
 
 require (
 	github.com/pion/randutil v0.1.0
