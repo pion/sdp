@@ -4,6 +4,8 @@
 # This file is auto generated, using git to list all individuals contributors.
 # see `.github/generate-authors.sh` for the scripting
 adwpc <adwpc@hotmail.com>
+Alex Converse <alexconv@twitch.tv>
+Ali Shirvani <alishirv@pm.me>
 Atsushi Watanabe <atsushi.w@ieee.org>
 backkem <mail@backkem.me>
 Brendan Abolivier <babolivier@matrix.org>
