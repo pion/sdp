@@ -15,6 +15,7 @@ Daniele Sluijters <daenney@users.noreply.github.com>
 Graham King <graham@gkgk.org>
 Guilherme <gqgs@protonmail.com>
 Hugo Arregui <hugo.arregui@gmail.com>
+Hugo Arregui <hugo@decentraland.org>
 Jason <jabrady42@gmail.com>
 Jerko Steiner <jerko.steiner@gmail.com>
 John Bradley <jrb@turrettech.com>
