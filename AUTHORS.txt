@@ -34,3 +34,6 @@ Sean DuBois <sean@siobud.com>
 tarrencev <tarrence13@gmail.com>
 Woodrow Douglass <wdouglass@carnegierobotics.com>
 ZHENK <chengzhenyang@gmail.com>
+
+# List of contributors not appearing in Git history
+
