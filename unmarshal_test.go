@@ -157,6 +157,18 @@ const (
 		"a=rtcp-fb:97 nack\r\n" +
 		"a=rtcp-fb:97 nack pli\r\n"
 
+	MediaBfcpSDP = TimingSDP +
+		"m=application 3238 UDP/BFCP *\r\n" +
+		"a=sendrecv\r\n" +
+		"a=setup:actpass\r\n" +
+		"a=connection:new\r\n" +
+		"a=floorctrl:c-s\r\n"
+
+	MediaCubeSDP = TimingSDP +
+		"m=application 2455 UDP/UDT/IX *\r\n" +
+		"a=ixmap:0 ping\r\n" +
+		"a=ixmap:2 xccp\r\n"
+
 	CanonicalUnmarshalSDP = "v=0\r\n" +
 		"o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5\r\n" +
 		"s=SDP Seminar\r\n" +
@@ -299,6 +311,14 @@ func TestRoundTrip(t *testing.T) {
 		{
 			Name: "CanonicalUnmarshal",
 			SDP:  CanonicalUnmarshalSDP,
+		},
+		{
+			Name: "MediaBfcpSDP",
+			SDP:  MediaBfcpSDP,
+		},
+		{
+			Name: "MediaCubeSDP",
+			SDP:  MediaCubeSDP,
 		},
 	} {
 		test := test
