@@ -31,6 +31,7 @@ Mustafa Navruz <mustafanavruz@gmail.com>
 Roman Romanenko <romandafe94@gmail.com>
 Sean DuBois <seaduboi@amazon.com>
 Sean DuBois <sean@siobud.com>
+Steffen Vogel <post@steffenvogel.de>
 tarrencev <tarrence13@gmail.com>
 Woodrow Douglass <wdouglass@carnegierobotics.com>
 ZHENK <chengzhenyang@gmail.com>
