@@ -10,34 +10,37 @@ import (
 // Marshal takes a SDP struct to text
 // https://tools.ietf.org/html/rfc4566#section-5
 // Session description
-//    v=  (protocol version)
-//    o=  (originator and session identifier)
-//    s=  (session name)
-//    i=* (session information)
-//    u=* (URI of description)
-//    e=* (email address)
-//    p=* (phone number)
-//    c=* (connection information -- not required if included in
-//         all media)
-//    b=* (zero or more bandwidth information lines)
-//    One or more time descriptions ("t=" and "r=" lines; see below)
-//    z=* (time zone adjustments)
-//    k=* (encryption key)
-//    a=* (zero or more session attribute lines)
-//    Zero or more media descriptions
+//
+//	v=  (protocol version)
+//	o=  (originator and session identifier)
+//	s=  (session name)
+//	i=* (session information)
+//	u=* (URI of description)
+//	e=* (email address)
+//	p=* (phone number)
+//	c=* (connection information -- not required if included in
+//	     all media)
+//	b=* (zero or more bandwidth information lines)
+//	One or more time descriptions ("t=" and "r=" lines; see below)
+//	z=* (time zone adjustments)
+//	k=* (encryption key)
+//	a=* (zero or more session attribute lines)
+//	Zero or more media descriptions
 //
 // Time description
-//    t=  (time the session is active)
-//    r=* (zero or more repeat times)
+//
+//	t=  (time the session is active)
+//	r=* (zero or more repeat times)
 //
 // Media description, if present
-//    m=  (media name and transport address)
-//    i=* (media title)
-//    c=* (connection information -- optional if included at
-//         session level)
-//    b=* (zero or more bandwidth information lines)
-//    k=* (encryption key)
-//    a=* (zero or more media attribute lines)
+//
+//	m=  (media name and transport address)
+//	i=* (media title)
+//	c=* (connection information -- optional if included at
+//	     session level)
+//	b=* (zero or more bandwidth information lines)
+//	k=* (encryption key)
+//	a=* (zero or more media attribute lines)
 func (s *SessionDescription) Marshal() ([]byte, error) {
 	m := make(marshaller, 0, 1024)
 
