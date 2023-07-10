@@ -876,6 +876,9 @@ func unmarshalMediaAttribute(l *lexer) (stateFn, error) {
 }
 
 func parseTimeUnits(value string) (num int64, err error) {
+	if len(value) == 0 {
+		return 0, fmt.Errorf("%w `%v`", errSDPInvalidValue, value)
+	}
 	k := timeShorthand(value[len(value)-1])
 	if k > 0 {
 		num, err = strconv.ParseInt(value[:len(value)-1], 10, 64)
