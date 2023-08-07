@@ -338,6 +338,11 @@ func TestUnmarshalRepeatTimes(t *testing.T) {
 	if string(actual) != RepeatTimesSDPExpected {
 		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", RepeatTimesSDPExpected, string(actual))
 	}
+
+	err = sd.Unmarshal([]byte(TimingSDP + "r=\r\n"))
+	if got, want := err, errSDPInvalidValue; !errors.Is(got, want) {
+		t.Fatalf("Marshal(): err=%v, want %v", got, want)
+	}
 }
 
 func TestUnmarshalTimeZones(t *testing.T) {

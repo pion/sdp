@@ -7,7 +7,7 @@ import "testing"
 
 func FuzzUnmarshal(f *testing.F) {
 	f.Add([]byte{})
-	f.Add([]byte(CanonicalMarshalSDP))
+	f.Add([]byte(CanonicalUnmarshalSDP))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		// Check that unmarshalling any byte slice does not panic.
 		var sd SessionDescription
