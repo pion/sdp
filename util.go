@@ -78,6 +78,18 @@ type Codec struct {
 	RTCPFeedback       []string
 }
 
+// RTCPFeedback represents a single a=rtcp-fb line
+type RTCPFeedback struct {
+	// If not wildcard, payload type specifies the specific payload type
+	PayloadType uint8
+
+	// If wildcard, PayloadType must be ignored, all payload types match
+	Wildcard bool
+
+	// The RTCPFeedback value for this a=rtcp-fb line
+	Val string
+}
+
 const (
 	unknown = iota
 )
@@ -153,30 +165,43 @@ func parseFmtp(fmtp string) (Codec, error) {
 	return codec, nil
 }
 
-func parseRtcpFb(rtcpFb string) (Codec, error) {
-	var codec Codec
+func parseRtcpFb(rtcpFb string) (RTCPFeedback, error) {
+	var rtcpFeedback RTCPFeedback
 	parsingFailed := errExtractCodecRtcpFb
 
 	// a=ftcp-fb:<payload type> <RTCP feedback type> [<RTCP feedback parameter>]
 	split := strings.SplitN(rtcpFb, " ", 2)
 	if len(split) != 2 {
-		return codec, parsingFailed
+		return rtcpFeedback, parsingFailed
 	}
 
 	ptSplit := strings.Split(split[0], ":")
 	if len(ptSplit) != 2 {
-		return codec, parsingFailed
+		return rtcpFeedback, parsingFailed
 	}
 
-	ptInt, err := strconv.ParseUint(ptSplit[1], 10, 8)
-	if err != nil {
-		return codec, parsingFailed
+	if ptSplit[1] == "*" {
+		rtcpFeedback.Wildcard = true
+	} else {
+		ptInt, err := strconv.ParseUint(ptSplit[1], 10, 8)
+		if err != nil {
+			return rtcpFeedback, parsingFailed
+		}
+		rtcpFeedback.PayloadType = uint8(ptInt)
 	}
 
-	codec.PayloadType = uint8(ptInt)
-	codec.RTCPFeedback = append(codec.RTCPFeedback, split[1])
+	rtcpFeedback.Val = split[1]
 
-	return codec, nil
+	return rtcpFeedback, nil
+}
+
+func appendIfMissing(slice []string, i string) []string {
+	for _, ele := range slice {
+		if ele == i {
+			return slice
+		}
+	}
+	return append(slice, i)
 }
 
 func mergeCodecs(codec Codec, codecs map[uint8]Codec) {
@@ -202,7 +227,7 @@ func mergeCodecs(codec Codec, codecs map[uint8]Codec) {
 	codecs[savedCodec.PayloadType] = savedCodec
 }
 
-func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
+func (s *SessionDescription) buildCodecMap() map[uint8]Codec { //nolint:gocognit
 	codecs := make(map[uint8]Codec)
 
 	for _, m := range s.MediaDescriptions {
@@ -219,10 +244,33 @@ func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
 				if err == nil {
 					mergeCodecs(codec, codecs)
 				}
-			case strings.HasPrefix(attr, "rtcp-fb:"):
-				codec, err := parseRtcpFb(attr)
-				if err == nil {
-					mergeCodecs(codec, codecs)
+			}
+		}
+	}
+
+	for _, m := range s.MediaDescriptions {
+		for _, a := range m.Attributes {
+			attr := a.String()
+			if strings.HasPrefix(attr, "rtcp-fb:") {
+				feedback, err := parseRtcpFb(attr)
+				if err != nil {
+					continue
+				}
+
+				if feedback.Wildcard {
+					for pt, codec := range codecs {
+						codec.RTCPFeedback = appendIfMissing(codec.RTCPFeedback, feedback.Val)
+						codecs[pt] = codec
+					}
+				} else {
+					codec, ok := codecs[feedback.PayloadType]
+
+					if !ok {
+						continue
+					}
+
+					codec.RTCPFeedback = appendIfMissing(codec.RTCPFeedback, feedback.Val)
+					codecs[feedback.PayloadType] = codec
 				}
 			}
 		}
