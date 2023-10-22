@@ -93,12 +93,16 @@ func TestGetPayloadTypeForVP8(t *testing.T) {
 
 func TestGetCodecForPayloadType(t *testing.T) {
 	for _, test := range []struct {
+		name        string
+		SD          SessionDescription
 		PayloadType uint8
 		Expected    Codec
 	}{
 		{
-			PayloadType: 120,
-			Expected: Codec{
+			"vp8",
+			getTestSessionDescription(),
+			120,
+			Codec{
 				PayloadType: 120,
 				Name:        "VP8",
 				ClockRate:   90000,
@@ -106,8 +110,10 @@ func TestGetCodecForPayloadType(t *testing.T) {
 			},
 		},
 		{
-			PayloadType: 121,
-			Expected: Codec{
+			"vp9",
+			getTestSessionDescription(),
+			121,
+			Codec{
 				PayloadType: 121,
 				Name:        "VP9",
 				ClockRate:   90000,
@@ -115,8 +121,10 @@ func TestGetCodecForPayloadType(t *testing.T) {
 			},
 		},
 		{
-			PayloadType: 126,
-			Expected: Codec{
+			"h264 126",
+			getTestSessionDescription(),
+			126,
+			Codec{
 				PayloadType: 126,
 				Name:        "H264",
 				ClockRate:   90000,
@@ -124,8 +132,10 @@ func TestGetCodecForPayloadType(t *testing.T) {
 			},
 		},
 		{
-			PayloadType: 97,
-			Expected: Codec{
+			"h264 97",
+			getTestSessionDescription(),
+			97,
+			Codec{
 				PayloadType:  97,
 				Name:         "H264",
 				ClockRate:    90000,
@@ -133,17 +143,57 @@ func TestGetCodecForPayloadType(t *testing.T) {
 				RTCPFeedback: []string{"ccm fir", "nack", "nack pli"},
 			},
 		},
+		{
+			"pcmu without rtpmap",
+			SessionDescription{
+				MediaDescriptions: []*MediaDescription{
+					{
+						MediaName: MediaName{
+							Media:   "audio",
+							Protos:  []string{"RTP", "AVP"},
+							Formats: []string{"0", "8"},
+						},
+					},
+				},
+			},
+			0,
+			Codec{
+				PayloadType: 0,
+				Name:        "PCMU",
+				ClockRate:   8000,
+			},
+		},
+		{
+			"pcma without rtpmap",
+			SessionDescription{
+				MediaDescriptions: []*MediaDescription{
+					{
+						MediaName: MediaName{
+							Media:   "audio",
+							Protos:  []string{"RTP", "AVP"},
+							Formats: []string{"0", "8"},
+						},
+					},
+				},
+			},
+			8,
+			Codec{
+				PayloadType: 8,
+				Name:        "PCMA",
+				ClockRate:   8000,
+			},
+		},
 	} {
-		sd := getTestSessionDescription()
+		t.Run(test.name, func(t *testing.T) {
+			actual, err := test.SD.GetCodecForPayloadType(test.PayloadType)
+			if got, want := err, error(nil); !errors.Is(got, want) {
+				t.Fatalf("GetCodecForPayloadType(): err=%v, want=%v", got, want)
+			}
 
-		actual, err := sd.GetCodecForPayloadType(test.PayloadType)
-		if got, want := err, error(nil); !errors.Is(got, want) {
-			t.Fatalf("GetCodecForPayloadType(): err=%v, want=%v", got, want)
-		}
-
-		if !reflect.DeepEqual(actual, test.Expected) {
-			t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", test.Expected, actual)
-		}
+			if !reflect.DeepEqual(actual, test.Expected) {
+				t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", test.Expected, actual)
+			}
+		})
 	}
 }
 
