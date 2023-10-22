@@ -203,7 +203,19 @@ func mergeCodecs(codec Codec, codecs map[uint8]Codec) {
 }
 
 func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
-	codecs := make(map[uint8]Codec)
+	codecs := map[uint8]Codec{
+		// static codecs that do not require a rtpmap
+		0: {
+			PayloadType: 0,
+			Name:        "PCMU",
+			ClockRate:   8000,
+		},
+		8: {
+			PayloadType: 8,
+			Name:        "PCMA",
+			ClockRate:   8000,
+		},
+	}
 
 	for _, m := range s.MediaDescriptions {
 		for _, a := range m.Attributes {
