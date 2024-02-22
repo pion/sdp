@@ -102,34 +102,34 @@ func (s *SessionDescription) Unmarshal(value string) error {
 	l.desc = s
 	l.value = value
 
-	stats := struct{ b, t, a, m int }{}
-	for {
-		name, err := l.readFieldName()
-		if err != nil {
-			break
-		}
-		switch name {
-		case 'b':
-			stats.b++
-		case 't':
-			stats.t++
-		case 'a':
-			stats.a++
-		case 'm':
-			stats.m++
-		}
-		if _, err := l.readLine(); err != nil {
-			break
-		}
-	}
+	// stats := struct{ b, t, a, m int }{}
+	// for {
+	// 	name, err := l.readFieldName()
+	// 	if err != nil {
+	// 		break
+	// 	}
+	// 	switch name {
+	// 	case 'b':
+	// 		stats.b++
+	// 	case 't':
+	// 		stats.t++
+	// 	case 'a':
+	// 		stats.a++
+	// 	case 'm':
+	// 		stats.m++
+	// 	}
+	// 	if _, err := l.readLine(); err != nil {
+	// 		break
+	// 	}
+	// }
 
-	l.reset()
+	// l.reset()
 
-	s.Bandwidth = make([]Bandwidth, 0, stats.b)
-	s.TimeDescriptions = make([]TimeDescription, 0, stats.t)
-	l.attrs = make([]Attribute, 0, stats.a)
-	// s.Attributes = make([]Attribute, 0, stats.a)
-	s.MediaDescriptions = make([]MediaDescription, 0, stats.m)
+	// s.Bandwidth = make([]Bandwidth, 0, stats.b)
+	// s.TimeDescriptions = make([]TimeDescription, 0, stats.t)
+	// l.attrs = make([]Attribute, 0, stats.a)
+	// // s.Attributes = make([]Attribute, 0, stats.a)
+	// s.MediaDescriptions = make([]MediaDescription, 0, stats.m)
 
 	for state := s1; state != nil; {
 		var err error
