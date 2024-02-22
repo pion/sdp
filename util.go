@@ -4,18 +4,13 @@
 package sdp
 
 import (
+	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/pion/randutil"
-)
-
-const (
-	attributeKey = "a="
 )
 
 var (
@@ -71,50 +66,78 @@ func newSessionID() (uint64, error) {
 // Codec represents a codec
 type Codec struct {
 	PayloadType        uint8
-	Name               string
+	Name               []byte
 	ClockRate          uint32
-	EncodingParameters string
-	Fmtp               string
-	RTCPFeedback       []string
+	EncodingParameters []byte
+	Fmtp               []byte
+	RTCPFeedback       [][]byte
 }
 
 const (
 	unknown = iota
 )
 
-func (c Codec) String() string {
-	return fmt.Sprintf("%d %s/%d/%s (%s) [%s]", c.PayloadType, c.Name, c.ClockRate, c.EncodingParameters, c.Fmtp, strings.Join(c.RTCPFeedback, ", "))
+func (c Codec) Len() int {
+	n := uintLen(uint64(c.PayloadType))
+	n += len(c.Name)
+	n += uintLen(uint64(c.ClockRate))
+	n += len(c.EncodingParameters)
+	n += len(c.Fmtp)
+	for i, f := range c.RTCPFeedback {
+		if i > 0 {
+			n += 2
+		}
+		n += len(f)
+	}
+	return n + 9
 }
 
-func parseRtpmap(rtpmap string) (Codec, error) {
-	var codec Codec
-	parsingFailed := errExtractCodecRtpmap
+func (c Codec) AppendTo(b []byte) []byte {
+	b = growByteSlice(b, c.Len())
+	b = strconv.AppendUint(b, uint64(c.PayloadType), 10)
+	b = append(b, ' ')
+	b = append(b, c.Name...)
+	b = append(b, '/')
+	b = strconv.AppendUint(b, uint64(c.ClockRate), 10)
+	b = append(b, '/')
+	b = append(b, c.EncodingParameters...)
+	b = append(b, " ("...)
+	b = append(b, c.Fmtp...)
+	b = append(b, ") ["...)
+	for i, f := range c.RTCPFeedback {
+		if i > 0 {
+			b = append(b, ", "...)
+		}
+		b = append(b, f...)
+	}
+	b = append(b, ']')
+	return b
+}
 
-	// a=rtpmap:<payload type> <encoding name>/<clock rate>[/<encoding parameters>]
-	split := strings.Split(rtpmap, " ")
-	if len(split) != 2 {
-		return codec, parsingFailed
+// func (c Codec) String() string {
+// 	return fmt.Sprintf("%d %s/%d/%s (%s) [%s]", c.PayloadType, c.Name, c.ClockRate, c.EncodingParameters, c.Fmtp, bytes.Join(c.RTCPFeedback, ", "))
+// }
+
+func parseRtpmap(rtpmap Attribute) (codec Codec, err error) {
+	// <payload type> <encoding name>/<clock rate>[/<encoding parameters>]
+	i := bytes.IndexRune(rtpmap.Value, ' ')
+	if i == -1 {
+		return codec, errExtractCodecRtpmap
 	}
 
-	ptSplit := strings.Split(split[0], ":")
-	if len(ptSplit) != 2 {
-		return codec, parsingFailed
+	ptInt, ok := parseUint(rtpmap.Value[:i], 8)
+	if !ok {
+		return codec, errExtractCodecRtpmap
 	}
-
-	ptInt, err := strconv.ParseUint(ptSplit[1], 10, 8)
-	if err != nil {
-		return codec, parsingFailed
-	}
-
 	codec.PayloadType = uint8(ptInt)
 
-	split = strings.Split(split[1], "/")
+	split := bytes.Split(rtpmap.Value[i+1:], kSlash)
 	codec.Name = split[0]
 	parts := len(split)
 	if parts > 1 {
-		rate, err := strconv.ParseUint(split[1], 10, 32)
-		if err != nil {
-			return codec, parsingFailed
+		rate, ok := parseUint(split[1], 32)
+		if !ok {
+			return codec, errExtractCodecRtpmap
 		}
 		codec.ClockRate = uint32(rate)
 	}
@@ -125,56 +148,38 @@ func parseRtpmap(rtpmap string) (Codec, error) {
 	return codec, nil
 }
 
-func parseFmtp(fmtp string) (Codec, error) {
-	var codec Codec
-	parsingFailed := errExtractCodecFmtp
-
-	// a=fmtp:<format> <format specific parameters>
-	split := strings.Split(fmtp, " ")
-	if len(split) != 2 {
-		return codec, parsingFailed
+func parseFmtp(fmtp Attribute) (codec Codec, err error) {
+	// <format> <format specific parameters>
+	i := bytes.IndexRune(fmtp.Value, ' ')
+	if i == -1 {
+		return codec, errExtractCodecFmtp
 	}
 
-	formatParams := split[1]
-
-	split = strings.Split(split[0], ":")
-	if len(split) != 2 {
-		return codec, parsingFailed
+	ptInt, ok := parseUint(fmtp.Value[i+1:], 8)
+	if !ok {
+		return codec, errExtractCodecFmtp
 	}
-
-	ptInt, err := strconv.ParseUint(split[1], 10, 8)
-	if err != nil {
-		return codec, parsingFailed
-	}
-
 	codec.PayloadType = uint8(ptInt)
-	codec.Fmtp = formatParams
+
+	codec.Fmtp = fmtp.Value[:i]
 
 	return codec, nil
 }
 
-func parseRtcpFb(rtcpFb string) (Codec, error) {
-	var codec Codec
-	parsingFailed := errExtractCodecRtcpFb
-
-	// a=ftcp-fb:<payload type> <RTCP feedback type> [<RTCP feedback parameter>]
-	split := strings.SplitN(rtcpFb, " ", 2)
-	if len(split) != 2 {
-		return codec, parsingFailed
+func parseRtcpFb(rtcpFb Attribute) (codec Codec, err error) {
+	// <payload type> <RTCP feedback type> [<RTCP feedback parameter>]
+	i := bytes.IndexRune(rtcpFb.Value, ' ')
+	if i == -1 {
+		return codec, errExtractCodecRtcpFb
 	}
 
-	ptSplit := strings.Split(split[0], ":")
-	if len(ptSplit) != 2 {
-		return codec, parsingFailed
-	}
-
-	ptInt, err := strconv.ParseUint(ptSplit[1], 10, 8)
-	if err != nil {
-		return codec, parsingFailed
+	ptInt, ok := parseUint(rtcpFb.Value[:i], 8)
+	if !ok {
+		return codec, errExtractCodecRtcpFb
 	}
 
 	codec.PayloadType = uint8(ptInt)
-	codec.RTCPFeedback = append(codec.RTCPFeedback, split[1])
+	codec.RTCPFeedback = append(codec.RTCPFeedback, rtcpFb.Value[i+1:])
 
 	return codec, nil
 }
@@ -185,16 +190,16 @@ func mergeCodecs(codec Codec, codecs map[uint8]Codec) {
 	if savedCodec.PayloadType == 0 {
 		savedCodec.PayloadType = codec.PayloadType
 	}
-	if savedCodec.Name == "" {
+	if len(savedCodec.Name) == 0 {
 		savedCodec.Name = codec.Name
 	}
 	if savedCodec.ClockRate == 0 {
 		savedCodec.ClockRate = codec.ClockRate
 	}
-	if savedCodec.EncodingParameters == "" {
+	if len(savedCodec.EncodingParameters) == 0 {
 		savedCodec.EncodingParameters = codec.EncodingParameters
 	}
-	if savedCodec.Fmtp == "" {
+	if len(savedCodec.Fmtp) == 0 {
 		savedCodec.Fmtp = codec.Fmtp
 	}
 	savedCodec.RTCPFeedback = append(savedCodec.RTCPFeedback, codec.RTCPFeedback...)
@@ -207,32 +212,30 @@ func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
 		// static codecs that do not require a rtpmap
 		0: {
 			PayloadType: 0,
-			Name:        "PCMU",
+			Name:        kPcmu,
 			ClockRate:   8000,
 		},
 		8: {
 			PayloadType: 8,
-			Name:        "PCMA",
+			Name:        kPcma,
 			ClockRate:   8000,
 		},
 	}
 
 	for _, m := range s.MediaDescriptions {
 		for _, a := range m.Attributes {
-			attr := a.String()
-			switch {
-			case strings.HasPrefix(attr, "rtpmap:"):
-				codec, err := parseRtpmap(attr)
+			if bytes.Equal(a.Key, kRtpmap) {
+				codec, err := parseRtpmap(a)
 				if err == nil {
 					mergeCodecs(codec, codecs)
 				}
-			case strings.HasPrefix(attr, "fmtp:"):
-				codec, err := parseFmtp(attr)
+			} else if bytes.Equal(a.Key, kFmtp) {
+				codec, err := parseFmtp(a)
 				if err == nil {
 					mergeCodecs(codec, codecs)
 				}
-			case strings.HasPrefix(attr, "rtcp-fb:"):
-				codec, err := parseRtcpFb(attr)
+			} else if bytes.Equal(a.Key, kRtcpFb) {
+				codec, err := parseRtcpFb(a)
 				if err == nil {
 					mergeCodecs(codec, codecs)
 				}
@@ -243,21 +246,21 @@ func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
 	return codecs
 }
 
-func equivalentFmtp(want, got string) bool {
-	wantSplit := strings.Split(want, ";")
-	gotSplit := strings.Split(got, ";")
+func equivalentFmtp(want, got []byte) bool {
+	wantSplit := bytes.Split(want, kSemicolon)
+	gotSplit := bytes.Split(got, kSemicolon)
 
 	if len(wantSplit) != len(gotSplit) {
 		return false
 	}
 
-	sort.Strings(wantSplit)
-	sort.Strings(gotSplit)
+	sort.Slice(wantSplit, func(i, j int) bool { return bytes.Compare(wantSplit[i], wantSplit[j]) == -1 })
+	sort.Slice(gotSplit, func(i, j int) bool { return bytes.Compare(gotSplit[i], gotSplit[j]) == -1 })
 
 	for i, wantPart := range wantSplit {
-		wantPart = strings.TrimSpace(wantPart)
-		gotPart := strings.TrimSpace(gotSplit[i])
-		if gotPart != wantPart {
+		wantPart = bytes.TrimSpace(wantPart)
+		gotPart := bytes.TrimSpace(gotSplit[i])
+		if !bytes.Equal(gotPart, wantPart) {
 			return false
 		}
 	}
@@ -266,16 +269,16 @@ func equivalentFmtp(want, got string) bool {
 }
 
 func codecsMatch(wanted, got Codec) bool {
-	if wanted.Name != "" && !strings.EqualFold(wanted.Name, got.Name) {
+	if wanted.Name != nil && !bytes.EqualFold(wanted.Name, got.Name) {
 		return false
 	}
 	if wanted.ClockRate != 0 && wanted.ClockRate != got.ClockRate {
 		return false
 	}
-	if wanted.EncodingParameters != "" && wanted.EncodingParameters != got.EncodingParameters {
+	if wanted.EncodingParameters != nil && !bytes.Equal(wanted.EncodingParameters, got.EncodingParameters) {
 		return false
 	}
-	if wanted.Fmtp != "" && !equivalentFmtp(wanted.Fmtp, got.Fmtp) {
+	if wanted.Fmtp != nil && !equivalentFmtp(wanted.Fmtp, got.Fmtp) {
 		return false
 	}
 
@@ -315,19 +318,94 @@ type lexer struct {
 	baseLexer
 }
 
-type keyToState func(key string) stateFn
+type attrName byte
 
-func (l *lexer) handleType(fn keyToState) (stateFn, error) {
-	key, err := l.readType()
-	if errors.Is(err, io.EOF) && key == "" {
-		return nil, nil //nolint:nilnil
+const invalidAttrName attrName = 0
+
+type attrNameToState func(name attrName) stateFn
+
+func (l *lexer) handleType(fn attrNameToState) (stateFn, error) {
+	name, err := l.readFieldName()
+	if err == io.EOF {
+		return nil, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	if res := fn(key); res != nil {
+	if res := fn(name); res != nil {
 		return res, nil
 	}
 
 	return nil, l.syntaxError()
+}
+
+func uintLen(n uint64) int {
+	return log10(n) + 1
+}
+
+func log10(n uint64) int {
+	switch {
+	case n == 0:
+		return 0
+	case n < 1e1:
+		return 1
+	case n < 1e2:
+		return 2
+	case n < 1e3:
+		return 3
+	case n < 1e4:
+		return 4
+	case n < 1e5:
+		return 5
+	case n < 1e6:
+		return 6
+	case n < 1e7:
+		return 7
+	case n < 1e8:
+		return 8
+	case n < 1e9:
+		return 9
+	case n < 1e10:
+		return 10
+	case n < 1e11:
+		return 11
+	case n < 1e12:
+		return 12
+	case n < 1e13:
+		return 13
+	case n < 1e14:
+		return 14
+	case n < 1e15:
+		return 15
+	case n < 1e16:
+		return 16
+	case n < 1e17:
+		return 17
+	case n < 1e18:
+		return 18
+	case n < 1e19:
+		return 19
+	default:
+		return 20
+	}
+}
+
+// increase capacity of byte slice to accommodate at least n bytes
+func growByteSlice(b []byte, n int) []byte {
+	if cap(b)-len(b) >= n {
+		return b
+	}
+	bc := make([]byte, len(b), len(b)+n)
+	copy(bc, b)
+	return bc
+}
+
+// increase capacity of byte slice slice to accommodate at least n slices
+func growByteSliceSlice(b [][]byte, n int) [][]byte {
+	if cap(b)-len(b) >= n {
+		return b
+	}
+	bc := make([][]byte, len(b), len(b)+n)
+	copy(bc, b)
+	return bc
 }

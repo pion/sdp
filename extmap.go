@@ -4,10 +4,9 @@
 package sdp
 
 import (
+	"bytes"
 	"fmt"
-	"net/url"
 	"strconv"
-	"strings"
 )
 
 // Default ext values
@@ -27,85 +26,84 @@ const (
 // ExtMap represents the activation of a single RTP header extension
 type ExtMap struct {
 	Value     int
-	Direction Direction
-	URI       *url.URL
-	ExtAttr   *string
+	Direction []byte
+	URI       []byte
+	ExtAttr   []byte
 }
 
 // Clone converts this object to an Attribute
-func (e *ExtMap) Clone() Attribute {
-	return Attribute{Key: "extmap", Value: e.string()}
+func (e ExtMap) Clone() Attribute {
+	return Attribute{Key: kExtmap, Value: e.AppendTo(nil)}
 }
 
 // Unmarshal creates an Extmap from a string
-func (e *ExtMap) Unmarshal(raw string) error {
-	parts := strings.SplitN(raw, ":", 2)
+func (e ExtMap) Unmarshal(raw []byte) error {
+	parts := bytes.SplitN(raw, kColon, 2)
 	if len(parts) != 2 {
 		return fmt.Errorf("%w: %v", errSyntaxError, raw)
 	}
 
-	fields := strings.Fields(parts[1])
+	fields := bytes.Fields(parts[1])
 	if len(fields) < 2 {
 		return fmt.Errorf("%w: %v", errSyntaxError, raw)
 	}
 
-	valdir := strings.Split(fields[0], "/")
-	value, err := strconv.ParseInt(valdir[0], 10, 64)
-	if (value < 1) || (value > 246) {
-		return fmt.Errorf("%w: %v -- extmap key must be in the range 1-256", errSyntaxError, valdir[0])
-	}
-	if err != nil {
+	valdir := bytes.Split(fields[0], kSlash)
+	value, ok := parseUint(valdir[0], 8)
+	if !ok || value == 0 {
 		return fmt.Errorf("%w: %v", errSyntaxError, valdir[0])
 	}
 
-	var direction Direction
-	if len(valdir) == 2 {
-		direction, err = NewDirection(valdir[1])
-		if err != nil {
-			return err
-		}
-	}
-
-	uri, err := url.Parse(fields[1])
-	if err != nil {
-		return err
+	if !anyOf(valdir[1], kSendRecv, kSendOnly, kRecvOnly, kInactive) {
+		return fmt.Errorf("%w: %v", errDirectionString, valdir[1])
 	}
 
 	if len(fields) == 3 {
-		tmp := fields[2]
-		e.ExtAttr = &tmp
+		e.ExtAttr = fields[2]
 	}
 
 	e.Value = int(value)
-	e.Direction = direction
-	e.URI = uri
+	e.Direction = valdir[1]
+	e.URI = fields[1]
 	return nil
 }
 
 // Marshal creates a string from an ExtMap
-func (e *ExtMap) Marshal() string {
-	return e.Name() + ":" + e.string()
+func (e ExtMap) Marshal() []byte {
+	b := make([]byte, 0, len(kExtmap)+1+e.Len())
+	b = append(b, kExtmap...)
+	b = append(b, ':')
+	b = e.AppendTo(b)
+	return b
 }
 
-func (e *ExtMap) string() string {
-	output := fmt.Sprintf("%d", e.Value)
-	dirstring := e.Direction.String()
-	if dirstring != directionUnknownStr {
-		output += "/" + dirstring
+func (e ExtMap) Len() int {
+	n := uintLen(uint64(e.Value))
+	if len(e.Direction) != 0 {
+		n += len(e.Direction) + 1
 	}
-
-	if e.URI != nil {
-		output += " " + e.URI.String()
+	if len(e.URI) != 0 {
+		n += len(e.URI) + 1
 	}
-
-	if e.ExtAttr != nil {
-		output += " " + *e.ExtAttr
+	if len(e.ExtAttr) != 0 {
+		n += len(e.ExtAttr) + 1
 	}
-
-	return output
+	return n
 }
 
-// Name returns the constant name of this object
-func (e *ExtMap) Name() string {
-	return "extmap"
+func (e ExtMap) AppendTo(b []byte) []byte {
+	b = strconv.AppendUint(b, uint64(e.Value), 10)
+	if len(e.Direction) != 0 {
+		b = append(b, '/')
+		b = append(b, e.Direction...)
+	}
+	if len(e.URI) != 0 {
+		b = append(b, ' ')
+		b = append(b, e.URI...)
+	}
+	if len(e.ExtAttr) != 0 {
+		b = append(b, ' ')
+		b = append(b, e.ExtAttr...)
+	}
+	return b
 }

@@ -4,10 +4,9 @@
 package sdp
 
 import (
-	"net/url"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExtmap(t *testing.T) {
@@ -28,26 +27,23 @@ func TestExtmap(t *testing.T) {
 
 	for i, u := range passingtests {
 		actual := ExtMap{}
-		assert.NoError(t, actual.Unmarshal(u.parameter))
-		assert.Equal(t, u.expected, actual.Marshal(), "%d: %+v", i, u)
+		require.NoError(t, actual.Unmarshal([]byte(u.parameter)))
+		require.Equal(t, u.expected, actual.Marshal(), "%d: %+v", i, u)
 	}
 
 	for _, u := range failingtests {
 		actual := ExtMap{}
-		assert.Error(t, actual.Unmarshal(u.parameter))
+		require.Error(t, actual.Unmarshal([]byte(u.parameter)))
 	}
 }
 
 func TestTransportCCExtMap(t *testing.T) {
 	// a=extmap:<value>["/"<direction>] <URI> <extensionattributes>
 	// a=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
-	uri, _ := url.Parse("http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01")
 	e := ExtMap{
 		Value: 3,
-		URI:   uri,
+		URI:   []byte("http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"),
 	}
 
-	if e.Marshal() == "3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01" {
-		t.Error("TestTransportCC failed")
-	}
+	require.EqualValues(t, e.Marshal(), "3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01")
 }

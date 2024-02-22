@@ -11,28 +11,28 @@ import (
 
 func getTestSessionDescription() SessionDescription {
 	return SessionDescription{
-		MediaDescriptions: []*MediaDescription{
+		MediaDescriptions: []MediaDescription{
 			{
 				MediaName: MediaName{
-					Media: "video",
+					Media: kVideo,
 					Port: RangedPort{
 						Value: 51372,
 					},
-					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"120", "121", "126", "97"},
+					Protos:  [][]byte{[]byte("RTP"), []byte("AVP")},
+					Formats: [][]byte{[]byte("120"), []byte("121"), []byte("126"), []byte("97")},
 				},
 				Attributes: []Attribute{
-					NewAttribute("fmtp:126 profile-level-id=42e01f;level-asymmetry-allowed=1;packetization-mode=1", ""),
-					NewAttribute("fmtp:97 profile-level-id=42e01f;level-asymmetry-allowed=1", ""),
-					NewAttribute("fmtp:120 max-fs=12288;max-fr=60", ""),
-					NewAttribute("fmtp:121 max-fs=12288;max-fr=60", ""),
-					NewAttribute("rtpmap:120 VP8/90000", ""),
-					NewAttribute("rtpmap:121 VP9/90000", ""),
-					NewAttribute("rtpmap:126 H264/90000", ""),
-					NewAttribute("rtpmap:97 H264/90000", ""),
-					NewAttribute("rtcp-fb:97 ccm fir", ""),
-					NewAttribute("rtcp-fb:97 nack", ""),
-					NewAttribute("rtcp-fb:97 nack pli", ""),
+					NewAttribute([]byte("fmtp"), []byte("126 profile-level-id=42e01f;level-asymmetry-allowed=1;packetization-mode=1")),
+					NewAttribute([]byte("fmtp"), []byte("97 profile-level-id=42e01f;level-asymmetry-allowed=1")),
+					NewAttribute([]byte("fmtp"), []byte("120 max-fs=12288;max-fr=60")),
+					NewAttribute([]byte("fmtp"), []byte("121 max-fs=12288;max-fr=60")),
+					NewAttribute([]byte("rtpmap"), []byte("120 VP8/90000")),
+					NewAttribute([]byte("rtpmap"), []byte("121 VP9/90000")),
+					NewAttribute([]byte("rtpmap"), []byte("126 H264/90000")),
+					NewAttribute([]byte("rtpmap"), []byte("97 H264/90000")),
+					NewAttribute([]byte("rtcp-fb"), []byte("97 ccm fir")),
+					NewAttribute([]byte("rtcp-fb"), []byte("97 nack")),
+					NewAttribute([]byte("rtcp-fb"), []byte("97 nack pli")),
 				},
 			},
 		},
@@ -46,34 +46,34 @@ func TestGetPayloadTypeForVP8(t *testing.T) {
 	}{
 		{
 			Codec: Codec{
-				Name: "VP8",
+				Name: []byte("VP8"),
 			},
 			Expected: 120,
 		},
 		{
 			Codec: Codec{
-				Name: "VP9",
+				Name: []byte("VP9"),
 			},
 			Expected: 121,
 		},
 		{
 			Codec: Codec{
-				Name: "H264",
-				Fmtp: "profile-level-id=42e01f;level-asymmetry-allowed=1",
+				Name: []byte("H264"),
+				Fmtp: []byte("profile-level-id=42e01f;level-asymmetry-allowed=1"),
 			},
 			Expected: 97,
 		},
 		{
 			Codec: Codec{
-				Name: "H264",
-				Fmtp: "level-asymmetry-allowed=1;profile-level-id=42e01f",
+				Name: []byte("H264"),
+				Fmtp: []byte("level-asymmetry-allowed=1;profile-level-id=42e01f"),
 			},
 			Expected: 97,
 		},
 		{
 			Codec: Codec{
-				Name: "H264",
-				Fmtp: "profile-level-id=42e01f;level-asymmetry-allowed=1;packetization-mode=1",
+				Name: []byte("H264"),
+				Fmtp: []byte("profile-level-id=42e01f;level-asymmetry-allowed=1;packetization-mode=1"),
 			},
 			Expected: 126,
 		},
@@ -104,9 +104,9 @@ func TestGetCodecForPayloadType(t *testing.T) {
 			120,
 			Codec{
 				PayloadType: 120,
-				Name:        "VP8",
+				Name:        []byte("VP8"),
 				ClockRate:   90000,
-				Fmtp:        "max-fs=12288;max-fr=60",
+				Fmtp:        []byte("max-fs=12288;max-fr=60"),
 			},
 		},
 		{
@@ -115,9 +115,9 @@ func TestGetCodecForPayloadType(t *testing.T) {
 			121,
 			Codec{
 				PayloadType: 121,
-				Name:        "VP9",
+				Name:        []byte("VP9"),
 				ClockRate:   90000,
-				Fmtp:        "max-fs=12288;max-fr=60",
+				Fmtp:        []byte("max-fs=12288;max-fr=60"),
 			},
 		},
 		{
@@ -126,9 +126,9 @@ func TestGetCodecForPayloadType(t *testing.T) {
 			126,
 			Codec{
 				PayloadType: 126,
-				Name:        "H264",
+				Name:        []byte("H264"),
 				ClockRate:   90000,
-				Fmtp:        "profile-level-id=42e01f;level-asymmetry-allowed=1;packetization-mode=1",
+				Fmtp:        []byte("profile-level-id=42e01f;level-asymmetry-allowed=1;packetization-mode=1"),
 			},
 		},
 		{
@@ -137,21 +137,21 @@ func TestGetCodecForPayloadType(t *testing.T) {
 			97,
 			Codec{
 				PayloadType:  97,
-				Name:         "H264",
+				Name:         []byte("H264"),
 				ClockRate:    90000,
-				Fmtp:         "profile-level-id=42e01f;level-asymmetry-allowed=1",
-				RTCPFeedback: []string{"ccm fir", "nack", "nack pli"},
+				Fmtp:         []byte("profile-level-id=42e01f;level-asymmetry-allowed=1"),
+				RTCPFeedback: [][]byte{[]byte("ccm fir"), []byte("nack"), []byte("nack pli")},
 			},
 		},
 		{
 			"pcmu without rtpmap",
 			SessionDescription{
-				MediaDescriptions: []*MediaDescription{
+				MediaDescriptions: []MediaDescription{
 					{
 						MediaName: MediaName{
-							Media:   "audio",
-							Protos:  []string{"RTP", "AVP"},
-							Formats: []string{"0", "8"},
+							Media:   []byte("audio"),
+							Protos:  [][]byte{[]byte("RTP"), []byte("AVP")},
+							Formats: [][]byte{[]byte("0"), []byte("8")},
 						},
 					},
 				},
@@ -159,19 +159,19 @@ func TestGetCodecForPayloadType(t *testing.T) {
 			0,
 			Codec{
 				PayloadType: 0,
-				Name:        "PCMU",
+				Name:        []byte("PCMU"),
 				ClockRate:   8000,
 			},
 		},
 		{
 			"pcma without rtpmap",
 			SessionDescription{
-				MediaDescriptions: []*MediaDescription{
+				MediaDescriptions: []MediaDescription{
 					{
 						MediaName: MediaName{
-							Media:   "audio",
-							Protos:  []string{"RTP", "AVP"},
-							Formats: []string{"0", "8"},
+							Media:   []byte("audio"),
+							Protos:  [][]byte{[]byte("RTP"), []byte("AVP")},
+							Formats: [][]byte{[]byte("0"), []byte("8")},
 						},
 					},
 				},
@@ -179,7 +179,7 @@ func TestGetCodecForPayloadType(t *testing.T) {
 			8,
 			Codec{
 				PayloadType: 8,
-				Name:        "PCMA",
+				Name:        []byte("PCMA"),
 				ClockRate:   8000,
 			},
 		},

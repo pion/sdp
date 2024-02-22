@@ -4,6 +4,7 @@
 package sdp
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 )
@@ -21,7 +22,7 @@ func TestLexer(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if field != "aaa" {
+			if !bytes.Equal(field, []byte("aaa")) {
 				t.Errorf("%s: aaa not parsed, got: '%v'", k, field)
 			}
 		}
@@ -45,7 +46,7 @@ func TestLexer(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if field != "aaa" {
+			if !bytes.Equal(field, []byte("aaa")) {
 				t.Errorf("aaa not parsed, got: '%v'", field)
 			}
 
@@ -67,7 +68,7 @@ func TestLexer(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if field != "f1" {
+			if !bytes.Equal(field, []byte("f1")) {
 				t.Errorf("value not parsed, got: '%v'", field)
 			}
 
@@ -75,7 +76,7 @@ func TestLexer(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if field != "f2" {
+			if !bytes.Equal(field, []byte("f2")) {
 				t.Errorf("value not parsed, got: '%v'", field)
 			}
 
@@ -83,7 +84,7 @@ func TestLexer(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if field != "" {
+			if !bytes.Equal(field, []byte("")) {
 				t.Errorf("value not parsed, got: '%v'", field)
 			}
 
@@ -97,9 +98,21 @@ func TestLexer(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if field != "last" {
+			if !bytes.Equal(field, []byte("last")) {
 				t.Errorf("value not parsed, got: '%v'", field)
 			}
 		})
 	})
+}
+
+var Sum uint64
+
+func BenchmarkFoo(b *testing.B) {
+	l := &baseLexer{
+		value: []byte("123456789000"),
+	}
+	for i := 0; i < b.N; i++ {
+		n, _ := l.readUint64Field()
+		Sum += n
+	}
 }

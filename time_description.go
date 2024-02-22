@@ -28,6 +28,18 @@ type Timing struct {
 	StopTime  uint64
 }
 
+func (t Timing) Len() int {
+	return uintLen(t.StartTime) + uintLen(t.StopTime) + 1
+}
+
+func (t Timing) AppendTo(b []byte) []byte {
+	b = growByteSlice(b, t.Len())
+	b = strconv.AppendUint(b, t.StartTime, 10)
+	b = append(b, ' ')
+	b = strconv.AppendUint(b, t.StopTime, 10)
+	return b
+}
+
 func (t Timing) String() string {
 	output := strconv.FormatUint(t.StartTime, 10)
 	output += " " + strconv.FormatUint(t.StopTime, 10)
@@ -40,6 +52,26 @@ type RepeatTime struct {
 	Interval int64
 	Duration int64
 	Offsets  []int64
+}
+
+func (r RepeatTime) Len() int {
+	n := uintLen(uint64(r.Interval)) + uintLen(uint64(r.Duration)) + 1
+	for _, o := range r.Offsets {
+		n += uintLen(uint64(o)) + 1
+	}
+	return n
+}
+
+func (r RepeatTime) AppendTo(b []byte) []byte {
+	b = growByteSlice(b, r.Len())
+	b = strconv.AppendUint(b, uint64(r.Interval), 10)
+	b = append(b, ' ')
+	b = strconv.AppendUint(b, uint64(r.Duration), 10)
+	for _, o := range r.Offsets {
+		b = append(b, ' ')
+		b = strconv.AppendUint(b, uint64(o), 10)
+	}
+	return b
 }
 
 func (r RepeatTime) String() string {

@@ -12,12 +12,12 @@ import (
 func TestWithFingerprint(t *testing.T) {
 	m := new(MediaDescription)
 
-	assert.Equal(t, []Attribute(nil), m.Attributes)
+	assert.EqualValues(t, []Attribute(nil), m.Attributes)
 
-	m = m.WithFingerprint("testalgorithm", "testfingerprint")
+	m = m.WithFingerprint([]byte("testalgorithm"), []byte("testfingerprint"))
 
-	assert.Equal(t, []Attribute{
-		{"fingerprint", "testalgorithm testfingerprint"},
+	assert.EqualValues(t, []Attribute{
+		{[]byte("fingerprint"), []byte("testalgorithm testfingerprint")},
 	},
 		m.Attributes)
 }

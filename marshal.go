@@ -3,9 +3,63 @@
 
 package sdp
 
-import (
-	"strings"
-)
+func (s *SessionDescription) Len() int {
+	n := s.Version.Len() + 4
+	n += s.Origin.Len() + 4
+	n += s.SessionName.Len() + 4
+	if s.SessionInformation.Defined() {
+		n += s.SessionInformation.Len() + 4
+	}
+	if s.URI.Defined() {
+		n += s.URI.Len() + 4
+	}
+	if s.EmailAddress.Defined() {
+		n += s.EmailAddress.Len() + 4
+	}
+	if s.PhoneNumber.Defined() {
+		n += s.PhoneNumber.Len() + 4
+	}
+	if s.ConnectionInformation.Defined() {
+		n += s.ConnectionInformation.Len() + 4
+	}
+	for _, bw := range s.Bandwidth {
+		n += bw.Len() + 4
+	}
+	for _, td := range s.TimeDescriptions {
+		n += td.Timing.Len() + 4
+		for _, r := range td.RepeatTimes {
+			n += r.Len() + 4
+		}
+	}
+	if s.TimeZones.Defined() {
+		n += s.TimeZones.Len() + 4
+	}
+	if s.EncryptionKey.Defined() {
+		n += s.EncryptionKey.Len() + 4
+	}
+	for _, a := range s.Attributes {
+		n += a.Len() + 4
+	}
+	for _, md := range s.MediaDescriptions {
+		n += md.MediaName.Len() + 4
+		if md.MediaTitle.Defined() {
+			n += md.MediaTitle.Len() + 4
+		}
+		if md.ConnectionInformation.Defined() {
+			n += md.ConnectionInformation.Len() + 4
+		}
+		for _, bw := range md.Bandwidth {
+			n += bw.Len() + 4
+		}
+		if md.EncryptionKey.Defined() {
+			n += md.EncryptionKey.Len() + 4
+		}
+		for _, a := range md.Attributes {
+			n += a.Len() + 4
+		}
+	}
+	return n
+}
 
 // Marshal takes a SDP struct to text
 // https://tools.ietf.org/html/rfc4566#section-5
@@ -42,101 +96,71 @@ import (
 //	k=* (encryption key)
 //	a=* (zero or more media attribute lines)
 func (s *SessionDescription) Marshal() ([]byte, error) {
-	m := make(marshaller, 0, 1024)
+	return s.AppendTo(nil), nil
+}
 
-	m.addKeyValue("v=", s.Version.String())
-	m.addKeyValue("o=", s.Origin.String())
-	m.addKeyValue("s=", s.SessionName.String())
-
-	if s.SessionInformation != nil {
-		m.addKeyValue("i=", s.SessionInformation.String())
+func (s *SessionDescription) AppendTo(b []byte) []byte {
+	b = growByteSlice(b, s.Len())
+	b = appendAttribute(b, "v=", s.Version)
+	b = appendAttribute(b, "o=", s.Origin)
+	b = appendAttribute(b, "s=", s.SessionName)
+	if s.SessionInformation.Defined() {
+		b = appendAttribute(b, "i=", s.SessionInformation)
 	}
-
-	if s.URI != nil {
-		m.addKeyValue("u=", s.URI.String())
+	if s.URI.Defined() {
+		b = appendAttribute(b, "u=", s.URI)
 	}
-
-	if s.EmailAddress != nil {
-		m.addKeyValue("e=", s.EmailAddress.String())
+	if s.EmailAddress.Defined() {
+		b = appendAttribute(b, "e=", s.EmailAddress)
 	}
-
-	if s.PhoneNumber != nil {
-		m.addKeyValue("p=", s.PhoneNumber.String())
+	if s.PhoneNumber.Defined() {
+		b = appendAttribute(b, "p=", s.PhoneNumber)
 	}
-
-	if s.ConnectionInformation != nil {
-		m.addKeyValue("c=", s.ConnectionInformation.String())
+	if s.ConnectionInformation.Defined() {
+		b = appendAttribute(b, "c=", s.ConnectionInformation)
 	}
-
-	for _, b := range s.Bandwidth {
-		m.addKeyValue("b=", b.String())
+	for _, bw := range s.Bandwidth {
+		b = appendAttribute(b, "b=", bw)
 	}
-
 	for _, td := range s.TimeDescriptions {
-		m.addKeyValue("t=", td.Timing.String())
+		b = appendAttribute(b, "t=", td.Timing)
 		for _, r := range td.RepeatTimes {
-			m.addKeyValue("r=", r.String())
+			b = appendAttribute(b, "r=", r)
 		}
 	}
-
-	if len(s.TimeZones) > 0 {
-		var b strings.Builder
-		for i, z := range s.TimeZones {
-			if i > 0 {
-				b.WriteString(" ")
-			}
-			b.WriteString(z.String())
-		}
-		m.addKeyValue("z=", b.String())
+	if s.TimeZones.Defined() {
+		b = appendAttribute(b, "z=", s.TimeZones)
 	}
-
-	if s.EncryptionKey != nil {
-		m.addKeyValue("k=", s.EncryptionKey.String())
+	if s.EncryptionKey.Defined() {
+		b = appendAttribute(b, "k=", s.EncryptionKey)
 	}
-
 	for _, a := range s.Attributes {
-		m.addKeyValue("a=", a.String())
+		b = appendAttribute(b, "a=", a)
 	}
-
 	for _, md := range s.MediaDescriptions {
-		m.addKeyValue("m=", md.MediaName.String())
-
-		if md.MediaTitle != nil {
-			m.addKeyValue("i=", md.MediaTitle.String())
+		b = appendAttribute(b, "m=", md.MediaName)
+		if md.MediaTitle.Defined() {
+			b = appendAttribute(b, "i=", md.MediaTitle)
 		}
-
-		if md.ConnectionInformation != nil {
-			m.addKeyValue("c=", md.ConnectionInformation.String())
+		if md.ConnectionInformation.Defined() {
+			b = appendAttribute(b, "c=", md.ConnectionInformation)
 		}
-
-		for _, b := range md.Bandwidth {
-			m.addKeyValue("b=", b.String())
+		for _, bw := range md.Bandwidth {
+			b = appendAttribute(b, "b=", bw)
 		}
-
-		if md.EncryptionKey != nil {
-			m.addKeyValue("k=", md.EncryptionKey.String())
+		if md.EncryptionKey.Defined() {
+			b = appendAttribute(b, "k=", md.EncryptionKey)
 		}
-
 		for _, a := range md.Attributes {
-			m.addKeyValue("a=", a.String())
+			b = appendAttribute(b, "a=", a)
 		}
 	}
-
-	return m.bytes(), nil
+	return b
 }
 
-// marshaller contains state during marshaling.
-type marshaller []byte
-
-func (m *marshaller) addKeyValue(key, value string) {
-	if value == "" {
-		return
-	}
-	*m = append(*m, key...)
-	*m = append(*m, value...)
-	*m = append(*m, "\r\n"...)
-}
-
-func (m *marshaller) bytes() []byte {
-	return *m
+func appendAttribute(b []byte, name string, a interface{ AppendTo([]byte) []byte }) []byte {
+	b = append(b, name...)
+	b = a.AppendTo(b)
+	b = append(b, "\r\n"...)
+	return b
 }

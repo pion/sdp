@@ -4,8 +4,8 @@
 package sdp
 
 import (
+	"bytes"
 	"strconv"
-	"strings"
 )
 
 // MediaDescription represents a media type.
@@ -17,11 +17,11 @@ type MediaDescription struct {
 
 	// i=<session description>
 	// https://tools.ietf.org/html/rfc4566#section-5.4
-	MediaTitle *Information
+	MediaTitle Information
 
 	// c=<nettype> <addrtype> <connection-address>
 	// https://tools.ietf.org/html/rfc4566#section-5.7
-	ConnectionInformation *ConnectionInformation
+	ConnectionInformation ConnectionInformation
 
 	// b=<bwtype>:<bandwidth>
 	// https://tools.ietf.org/html/rfc4566#section-5.8
@@ -30,7 +30,7 @@ type MediaDescription struct {
 	// k=<method>
 	// k=<method>:<encryption key>
 	// https://tools.ietf.org/html/rfc4566#section-5.12
-	EncryptionKey *EncryptionKey
+	EncryptionKey EncryptionKey
 
 	// a=<attribute>
 	// a=<attribute>:<value>
@@ -39,13 +39,13 @@ type MediaDescription struct {
 }
 
 // Attribute returns the value of an attribute and if it exists
-func (d *MediaDescription) Attribute(key string) (string, bool) {
+func (d *MediaDescription) Attribute(key []byte) ([]byte, bool) {
 	for _, a := range d.Attributes {
-		if a.Key == key {
+		if bytes.Equal(a.Key, key) {
 			return a.Value, true
 		}
 	}
-	return "", false
+	return nil, false
 }
 
 // RangedPort supports special format for the media field "m=" port value. If
@@ -53,31 +53,63 @@ func (d *MediaDescription) Attribute(key string) (string, bool) {
 // to write it as: <port>/<number of ports> where number of ports is a an
 // offsetting range.
 type RangedPort struct {
-	Value int
-	Range *int
+	Value uint16
+	Range uint16
 }
 
-func (p *RangedPort) String() string {
-	output := strconv.Itoa(p.Value)
-	if p.Range != nil {
-		output += "/" + strconv.Itoa(*p.Range)
+func (p RangedPort) Len() int {
+	n := uintLen(uint64(p.Value))
+	if p.Range != 0 {
+		n += uintLen(uint64(p.Range)) + 1
 	}
-	return output
+	return n
+}
+
+func (p RangedPort) AppendTo(b []byte) []byte {
+	b = growByteSlice(b, p.Len())
+	b = strconv.AppendUint(b, uint64(p.Value), 10)
+	if p.Range != 0 {
+		b = append(b, '/')
+		b = strconv.AppendUint(b, uint64(p.Range), 10)
+	}
+	return b
 }
 
 // MediaName describes the "m=" field storage structure.
 type MediaName struct {
-	Media   string
+	Media   []byte
 	Port    RangedPort
-	Protos  []string
-	Formats []string
+	Protos  [][]byte
+	Formats [][]byte
 }
 
-func (m MediaName) String() string {
-	return strings.Join([]string{
-		m.Media,
-		m.Port.String(),
-		strings.Join(m.Protos, "/"),
-		strings.Join(m.Formats, " "),
-	}, " ")
+func (m MediaName) Len() int {
+	n := len(m.Media) + m.Port.Len() + 1
+	for i := range m.Protos {
+		n += len(m.Protos[i]) + 1
+	}
+	for i := range m.Formats {
+		n += len(m.Formats[i]) + 1
+	}
+	return n
+}
+
+func (m MediaName) AppendTo(b []byte) []byte {
+	b = growByteSlice(b, m.Len())
+	b = append(b, m.Media...)
+	b = append(b, ' ')
+	b = m.Port.AppendTo(b)
+	for i := range m.Protos {
+		if i == 0 {
+			b = append(b, ' ')
+		} else {
+			b = append(b, '/')
+		}
+		b = append(b, m.Protos[i]...)
+	}
+	for i := range m.Formats {
+		b = append(b, ' ')
+		b = append(b, m.Formats[i]...)
+	}
+	return b
 }

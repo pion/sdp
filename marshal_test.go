@@ -4,9 +4,9 @@
 package sdp
 
 import (
-	"errors"
-	"net/url"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -41,40 +41,34 @@ func TestMarshalCanonical(t *testing.T) {
 	sd := &SessionDescription{
 		Version: 0,
 		Origin: Origin{
-			Username:       "jdoe",
+			Username:       []byte("jdoe"),
 			SessionID:      uint64(2890844526),
 			SessionVersion: uint64(2890842807),
-			NetworkType:    "IN",
-			AddressType:    "IP4",
-			UnicastAddress: "10.47.16.5",
+			NetworkType:    []byte("IN"),
+			AddressType:    []byte("IP4"),
+			UnicastAddress: []byte("10.47.16.5"),
 		},
-		SessionName:        "SDP Seminar",
-		SessionInformation: &(&struct{ x Information }{"A Seminar on the session description protocol"}).x,
-		URI: func() *url.URL {
-			uri, err := url.Parse("http://www.example.com/seminars/sdp.pdf")
-			if err != nil {
-				return nil
-			}
-			return uri
-		}(),
-		EmailAddress: &(&struct{ x EmailAddress }{"j.doe@example.com (Jane Doe)"}).x,
-		PhoneNumber:  &(&struct{ x PhoneNumber }{"+1 617 555-6011"}).x,
-		ConnectionInformation: &ConnectionInformation{
-			NetworkType: "IN",
-			AddressType: "IP4",
-			Address: &Address{
-				Address: "224.2.17.12",
-				TTL:     &(&struct{ x int }{127}).x,
+		SessionName:        []byte("SDP Seminar"),
+		SessionInformation: Information("A Seminar on the session description protocol"),
+		URI:                []byte("http://www.example.com/seminars/sdp.pdf"),
+		EmailAddress:       EmailAddress("j.doe@example.com (Jane Doe)"),
+		PhoneNumber:        PhoneNumber("+1 617 555-6011"),
+		ConnectionInformation: ConnectionInformation{
+			NetworkType: []byte("IN"),
+			AddressType: []byte("IP4"),
+			Address: Address{
+				Address: []byte("224.2.17.12"),
+				TTL:     127,
 			},
 		},
 		Bandwidth: []Bandwidth{
 			{
 				Experimental: true,
-				Type:         "YZ",
+				Type:         []byte("YZ"),
 				Bandwidth:    128,
 			},
 			{
-				Type:      "AS",
+				Type:      []byte("AS"),
 				Bandwidth: 12345,
 			},
 		},
@@ -110,64 +104,60 @@ func TestMarshalCanonical(t *testing.T) {
 				Offset:         0,
 			},
 		},
-		EncryptionKey: &(&struct{ x EncryptionKey }{"prompt"}).x,
+		EncryptionKey: EncryptionKey("prompt"),
 		Attributes: []Attribute{
-			NewAttribute("candidate:0 1 UDP 2113667327 203.0.113.1 54400 typ host", ""),
-			NewAttribute("recvonly", ""),
+			NewAttribute([]byte("candidate"), []byte("0 1 UDP 2113667327 203.0.113.1 54400 typ host")),
+			NewAttribute([]byte("recvonly"), nil),
 		},
-		MediaDescriptions: []*MediaDescription{
+		MediaDescriptions: []MediaDescription{
 			{
 				MediaName: MediaName{
-					Media: "audio",
+					Media: []byte("audio"),
 					Port: RangedPort{
 						Value: 49170,
 					},
-					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"0"},
+					Protos:  [][]byte{[]byte("RTP"), []byte("AVP")},
+					Formats: [][]byte{[]byte("0")},
 				},
-				MediaTitle: &(&struct{ x Information }{"Vivamus a posuere nisl"}).x,
-				ConnectionInformation: &ConnectionInformation{
-					NetworkType: "IN",
-					AddressType: "IP4",
-					Address: &Address{
-						Address: "203.0.113.1",
+				MediaTitle: Information("Vivamus a posuere nisl"),
+				ConnectionInformation: ConnectionInformation{
+					NetworkType: []byte("IN"),
+					AddressType: []byte("IP4"),
+					Address: Address{
+						Address: []byte("203.0.113.1"),
 					},
 				},
 				Bandwidth: []Bandwidth{
 					{
 						Experimental: true,
-						Type:         "YZ",
+						Type:         []byte("YZ"),
 						Bandwidth:    128,
 					},
 				},
-				EncryptionKey: &(&struct{ x EncryptionKey }{"prompt"}).x,
+				EncryptionKey: EncryptionKey("prompt"),
 				Attributes: []Attribute{
-					NewAttribute("sendrecv", ""),
+					NewAttribute([]byte("sendrecv"), nil),
 				},
 			},
 			{
 				MediaName: MediaName{
-					Media: "video",
+					Media: []byte("video"),
 					Port: RangedPort{
 						Value: 51372,
 					},
-					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"99"},
+					Protos:  [][]byte{[]byte("RTP"), []byte("AVP")},
+					Formats: [][]byte{[]byte("99")},
 				},
 				Attributes: []Attribute{
-					NewAttribute("rtpmap:99 h263-1998/90000", ""),
+					NewAttribute([]byte("rtpmap"), []byte("99 h263-1998/90000")),
 				},
 			},
 		},
 	}
 
 	actual, err := sd.Marshal()
-	if got, want := err, error(nil); !errors.Is(got, want) {
-		t.Fatalf("Marshal(): err=%v, want %v", got, want)
-	}
-	if string(actual) != CanonicalMarshalSDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", CanonicalMarshalSDP, string(actual))
-	}
+	require.NoError(t, err)
+	require.Equal(t, CanonicalMarshalSDP, string(actual))
 }
 
 // var sink []byte
@@ -175,7 +165,7 @@ func TestMarshalCanonical(t *testing.T) {
 func BenchmarkMarshal(b *testing.B) {
 	b.ReportAllocs()
 	var sd SessionDescription
-	err := sd.Unmarshal([]byte(CanonicalUnmarshalSDP))
+	err := sd.Unmarshal([]byte(BigSDP))
 	if err != nil {
 		b.Fatal(err)
 	}

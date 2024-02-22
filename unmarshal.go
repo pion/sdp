@@ -4,11 +4,9 @@
 package sdp
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-	"net/url"
-	"strconv"
-	"strings"
 )
 
 var (
@@ -103,6 +101,36 @@ func (s *SessionDescription) Unmarshal(value []byte) error {
 	l := new(lexer)
 	l.desc = s
 	l.value = value
+
+	stats := struct{ b, t, a, m int }{}
+	for {
+		name, err := l.readFieldName()
+		if err != nil {
+			break
+		}
+		switch name {
+		case 'b':
+			stats.b++
+		case 't':
+			stats.t++
+		case 'a':
+			stats.a++
+		case 'm':
+			stats.m++
+		}
+		if _, err := l.readLine(); err != nil {
+			break
+		}
+	}
+
+	l.reset()
+
+	s.Bandwidth = make([]Bandwidth, 0, stats.b)
+	s.TimeDescriptions = make([]TimeDescription, 0, stats.t)
+	l.attrs = make([]Attribute, 0, stats.a)
+	// s.Attributes = make([]Attribute, 0, stats.a)
+	s.MediaDescriptions = make([]MediaDescription, 0, stats.m)
+
 	for state := s1; state != nil; {
 		var err error
 		state, err = state(l)
@@ -114,8 +142,8 @@ func (s *SessionDescription) Unmarshal(value []byte) error {
 }
 
 func s1(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		if key == "v=" {
+	return l.handleType(func(name attrName) stateFn {
+		if name == 'v' {
 			return unmarshalProtocolVersion
 		}
 		return nil
@@ -123,8 +151,8 @@ func s1(l *lexer) (stateFn, error) {
 }
 
 func s2(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		if key == "o=" {
+	return l.handleType(func(name attrName) stateFn {
+		if name == 'o' {
 			return unmarshalOrigin
 		}
 		return nil
@@ -132,8 +160,8 @@ func s2(l *lexer) (stateFn, error) {
 }
 
 func s3(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		if key == "s=" {
+	return l.handleType(func(name attrName) stateFn {
+		if name == 's' {
 			return unmarshalSessionName
 		}
 		return nil
@@ -141,21 +169,21 @@ func s3(l *lexer) (stateFn, error) {
 }
 
 func s4(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		switch key {
-		case "i=":
+	return l.handleType(func(name attrName) stateFn {
+		switch name {
+		case 'i':
 			return unmarshalSessionInformation
-		case "u=":
+		case 'u':
 			return unmarshalURI
-		case "e=":
+		case 'e':
 			return unmarshalEmail
-		case "p=":
+		case 'p':
 			return unmarshalPhone
-		case "c=":
+		case 'c':
 			return unmarshalSessionConnectionInformation
-		case "b=":
+		case 'b':
 			return unmarshalSessionBandwidth
-		case "t=":
+		case 't':
 			return unmarshalTiming
 		}
 		return nil
@@ -163,11 +191,11 @@ func s4(l *lexer) (stateFn, error) {
 }
 
 func s5(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		switch key {
-		case "b=":
+	return l.handleType(func(name attrName) stateFn {
+		switch name {
+		case 'b':
 			return unmarshalSessionBandwidth
-		case "t=":
+		case 't':
 			return unmarshalTiming
 		}
 		return nil
@@ -175,15 +203,15 @@ func s5(l *lexer) (stateFn, error) {
 }
 
 func s6(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		switch key {
-		case "p=":
+	return l.handleType(func(name attrName) stateFn {
+		switch name {
+		case 'p':
 			return unmarshalPhone
-		case "c=":
+		case 'c':
 			return unmarshalSessionConnectionInformation
-		case "b=":
+		case 'b':
 			return unmarshalSessionBandwidth
-		case "t=":
+		case 't':
 			return unmarshalTiming
 		}
 		return nil
@@ -191,19 +219,19 @@ func s6(l *lexer) (stateFn, error) {
 }
 
 func s7(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		switch key {
-		case "u=":
+	return l.handleType(func(name attrName) stateFn {
+		switch name {
+		case 'u':
 			return unmarshalURI
-		case "e=":
+		case 'e':
 			return unmarshalEmail
-		case "p=":
+		case 'p':
 			return unmarshalPhone
-		case "c=":
+		case 'c':
 			return unmarshalSessionConnectionInformation
-		case "b=":
+		case 'b':
 			return unmarshalSessionBandwidth
-		case "t=":
+		case 't':
 			return unmarshalTiming
 		}
 		return nil
@@ -211,13 +239,13 @@ func s7(l *lexer) (stateFn, error) {
 }
 
 func s8(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		switch key {
-		case "c=":
+	return l.handleType(func(name attrName) stateFn {
+		switch name {
+		case 'c':
 			return unmarshalSessionConnectionInformation
-		case "b=":
+		case 'b':
 			return unmarshalSessionBandwidth
-		case "t=":
+		case 't':
 			return unmarshalTiming
 		}
 		return nil
@@ -225,19 +253,19 @@ func s8(l *lexer) (stateFn, error) {
 }
 
 func s9(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		switch key {
-		case "z=":
+	return l.handleType(func(name attrName) stateFn {
+		switch name {
+		case 'z':
 			return unmarshalTimeZones
-		case "k=":
+		case 'k':
 			return unmarshalSessionEncryptionKey
-		case "a=":
+		case 'a':
 			return unmarshalSessionAttribute
-		case "r=":
+		case 'r':
 			return unmarshalRepeatTimes
-		case "t=":
+		case 't':
 			return unmarshalTiming
-		case "m=":
+		case 'm':
 			return unmarshalMediaDescription
 		}
 		return nil
@@ -245,17 +273,17 @@ func s9(l *lexer) (stateFn, error) {
 }
 
 func s10(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		switch key {
-		case "e=":
+	return l.handleType(func(name attrName) stateFn {
+		switch name {
+		case 'e':
 			return unmarshalEmail
-		case "p=":
+		case 'p':
 			return unmarshalPhone
-		case "c=":
+		case 'c':
 			return unmarshalSessionConnectionInformation
-		case "b=":
+		case 'b':
 			return unmarshalSessionBandwidth
-		case "t=":
+		case 't':
 			return unmarshalTiming
 		}
 		return nil
@@ -263,11 +291,11 @@ func s10(l *lexer) (stateFn, error) {
 }
 
 func s11(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		switch key {
-		case "a=":
+	return l.handleType(func(name attrName) stateFn {
+		switch name {
+		case 'a':
 			return unmarshalSessionAttribute
-		case "m=":
+		case 'm':
 			return unmarshalMediaDescription
 		}
 		return nil
@@ -275,19 +303,19 @@ func s11(l *lexer) (stateFn, error) {
 }
 
 func s12(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		switch key {
-		case "a=":
+	return l.handleType(func(name attrName) stateFn {
+		switch name {
+		case 'a':
 			return unmarshalMediaAttribute
-		case "k=":
+		case 'k':
 			return unmarshalMediaEncryptionKey
-		case "b=":
+		case 'b':
 			return unmarshalMediaBandwidth
-		case "c=":
+		case 'c':
 			return unmarshalMediaConnectionInformation
-		case "i=":
+		case 'i':
 			return unmarshalMediaTitle
-		case "m=":
+		case 'm':
 			return unmarshalMediaDescription
 		}
 		return nil
@@ -295,13 +323,13 @@ func s12(l *lexer) (stateFn, error) {
 }
 
 func s13(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		switch key {
-		case "a=":
+	return l.handleType(func(name attrName) stateFn {
+		switch name {
+		case 'a':
 			return unmarshalSessionAttribute
-		case "k=":
+		case 'k':
 			return unmarshalSessionEncryptionKey
-		case "m=":
+		case 'm':
 			return unmarshalMediaDescription
 		}
 		return nil
@@ -309,23 +337,23 @@ func s13(l *lexer) (stateFn, error) {
 }
 
 func s14(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		switch key {
-		case "a=":
+	return l.handleType(func(name attrName) stateFn {
+		switch name {
+		case 'a':
 			return unmarshalMediaAttribute
-		case "k=":
+		case 'k':
 			// Non-spec ordering
 			return unmarshalMediaEncryptionKey
-		case "b=":
+		case 'b':
 			// Non-spec ordering
 			return unmarshalMediaBandwidth
-		case "c=":
+		case 'c':
 			// Non-spec ordering
 			return unmarshalMediaConnectionInformation
-		case "i=":
+		case 'i':
 			// Non-spec ordering
 			return unmarshalMediaTitle
-		case "m=":
+		case 'm':
 			return unmarshalMediaDescription
 		}
 		return nil
@@ -333,20 +361,20 @@ func s14(l *lexer) (stateFn, error) {
 }
 
 func s15(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		switch key {
-		case "a=":
+	return l.handleType(func(name attrName) stateFn {
+		switch name {
+		case 'a':
 			return unmarshalMediaAttribute
-		case "k=":
+		case 'k':
 			return unmarshalMediaEncryptionKey
-		case "b=":
+		case 'b':
 			return unmarshalMediaBandwidth
-		case "c=":
+		case 'c':
 			return unmarshalMediaConnectionInformation
-		case "i=":
+		case 'i':
 			// Non-spec ordering
 			return unmarshalMediaTitle
-		case "m=":
+		case 'm':
 			return unmarshalMediaDescription
 		}
 		return nil
@@ -354,20 +382,20 @@ func s15(l *lexer) (stateFn, error) {
 }
 
 func s16(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		switch key {
-		case "a=":
+	return l.handleType(func(name attrName) stateFn {
+		switch name {
+		case 'a':
 			return unmarshalMediaAttribute
-		case "k=":
+		case 'k':
 			return unmarshalMediaEncryptionKey
-		case "c=":
+		case 'c':
 			return unmarshalMediaConnectionInformation
-		case "b=":
+		case 'b':
 			return unmarshalMediaBandwidth
-		case "i=":
+		case 'i':
 			// Non-spec ordering
 			return unmarshalMediaTitle
-		case "m=":
+		case 'm':
 			return unmarshalMediaDescription
 		}
 		return nil
@@ -383,7 +411,7 @@ func unmarshalProtocolVersion(l *lexer) (stateFn, error) {
 	// As off the latest draft of the rfc this value is required to be 0.
 	// https://tools.ietf.org/html/draft-ietf-rtcweb-jsep-24#section-5.8.1
 	if version != 0 {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, version)
+		return nil, fmt.Errorf("%w `%d`", errSDPInvalidValue, version)
 	}
 
 	if err := l.nextLine(); err != nil {
@@ -418,8 +446,8 @@ func unmarshalOrigin(l *lexer) (stateFn, error) {
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if !anyOf(l.desc.Origin.NetworkType, "IN") {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, l.desc.Origin.NetworkType)
+	if !anyOf(l.desc.Origin.NetworkType, kIn) {
+		return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, l.desc.Origin.NetworkType)
 	}
 
 	l.desc.Origin.AddressType, err = l.readField()
@@ -429,8 +457,8 @@ func unmarshalOrigin(l *lexer) (stateFn, error) {
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.7
-	if !anyOf(l.desc.Origin.AddressType, "IP4", "IP6") {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, l.desc.Origin.AddressType)
+	if !anyOf(l.desc.Origin.AddressType, kIp4, kIp6) {
+		return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, l.desc.Origin.AddressType)
 	}
 
 	l.desc.Origin.UnicastAddress, err = l.readField()
@@ -461,8 +489,7 @@ func unmarshalSessionInformation(l *lexer) (stateFn, error) {
 		return nil, err
 	}
 
-	sessionInformation := Information(value)
-	l.desc.SessionInformation = &sessionInformation
+	l.desc.SessionInformation = Information(value)
 	return s7, nil
 }
 
@@ -472,10 +499,7 @@ func unmarshalURI(l *lexer) (stateFn, error) {
 		return nil, err
 	}
 
-	l.desc.URI, err = url.Parse(value)
-	if err != nil {
-		return nil, err
-	}
+	l.desc.URI = value
 
 	return s10, nil
 }
@@ -486,8 +510,7 @@ func unmarshalEmail(l *lexer) (stateFn, error) {
 		return nil, err
 	}
 
-	emailAddress := EmailAddress(value)
-	l.desc.EmailAddress = &emailAddress
+	l.desc.EmailAddress = EmailAddress(value)
 	return s6, nil
 }
 
@@ -497,8 +520,7 @@ func unmarshalPhone(l *lexer) (stateFn, error) {
 		return nil, err
 	}
 
-	phoneNumber := PhoneNumber(value)
-	l.desc.PhoneNumber = &phoneNumber
+	l.desc.PhoneNumber = PhoneNumber(value)
 	return s8, nil
 }
 
@@ -511,47 +533,41 @@ func unmarshalSessionConnectionInformation(l *lexer) (stateFn, error) {
 	return s5, nil
 }
 
-func (l *lexer) unmarshalConnectionInformation() (*ConnectionInformation, error) {
-	var err error
-	var c ConnectionInformation
-
+func (l *lexer) unmarshalConnectionInformation() (c ConnectionInformation, err error) {
 	c.NetworkType, err = l.readField()
 	if err != nil {
-		return nil, err
+		return c, err
 	}
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if !anyOf(c.NetworkType, "IN") {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, c.NetworkType)
+	if !anyOf(c.NetworkType, kIn) {
+		return c, fmt.Errorf("%w `%s`", errSDPInvalidValue, c.NetworkType)
 	}
 
 	c.AddressType, err = l.readField()
 	if err != nil {
-		return nil, err
+		return c, err
 	}
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.7
-	if !anyOf(c.AddressType, "IP4", "IP6") {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, c.AddressType)
+	if !anyOf(c.AddressType, kIp4, kIp6) {
+		return c, fmt.Errorf("%w `%s`", errSDPInvalidValue, c.AddressType)
 	}
 
 	address, err := l.readField()
 	if err != nil {
-		return nil, err
+		return c, err
 	}
 
-	if address != "" {
-		c.Address = new(Address)
-		c.Address.Address = address
-	}
+	c.Address.Address = address
 
 	if err := l.nextLine(); err != nil {
-		return nil, err
+		return c, err
 	}
 
-	return &c, nil
+	return c, nil
 }
 
 func unmarshalSessionBandwidth(l *lexer) (stateFn, error) {
@@ -569,31 +585,32 @@ func unmarshalSessionBandwidth(l *lexer) (stateFn, error) {
 	return s5, nil
 }
 
-func unmarshalBandwidth(value string) (*Bandwidth, error) {
-	parts := strings.Split(value, ":")
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("%w `b=%v`", errSDPInvalidValue, parts)
+func unmarshalBandwidth(value []byte) (*Bandwidth, error) {
+	i := bytes.IndexRune(value, ':')
+	if i == -1 {
+		return nil, fmt.Errorf("%w `b=%v`", errSDPInvalidValue, value)
 	}
 
-	experimental := strings.HasPrefix(parts[0], "X-")
+	typ := value[:i]
+	experimental := bytes.HasPrefix(typ, kExperimental)
 	if experimental {
-		parts[0] = strings.TrimPrefix(parts[0], "X-")
-	} else if !anyOf(parts[0], "CT", "AS", "TIAS", "RS", "RR") {
+		typ = bytes.TrimPrefix(typ, kExperimental)
+	} else if !anyOf(typ, kCt, kAs, kTias, kRs, kRr) {
 		// Set according to currently registered with IANA
 		// https://tools.ietf.org/html/rfc4566#section-5.8
 		// https://tools.ietf.org/html/rfc3890#section-6.2
 		// https://tools.ietf.org/html/rfc3556#section-2
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, parts[0])
+		return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, typ)
 	}
 
-	bandwidth, err := strconv.ParseUint(parts[1], 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, parts[1])
+	bandwidth, ok := parseUint(value[i+1:], 64)
+	if !ok {
+		return nil, fmt.Errorf("%w `%s`", errSDPInvalidNumericValue, value[i+1:])
 	}
 
 	return &Bandwidth{
 		Experimental: experimental,
-		Type:         parts[0],
+		Type:         typ,
 		Bandwidth:    bandwidth,
 	}, nil
 }
@@ -633,7 +650,7 @@ func unmarshalRepeatTimes(l *lexer) (stateFn, error) {
 
 	newRepeatTime.Interval, err = parseTimeUnits(field)
 	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, field)
+		return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, field)
 	}
 
 	field, err = l.readField()
@@ -643,7 +660,7 @@ func unmarshalRepeatTimes(l *lexer) (stateFn, error) {
 
 	newRepeatTime.Duration, err = parseTimeUnits(field)
 	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, field)
+		return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, field)
 	}
 
 	for {
@@ -651,12 +668,12 @@ func unmarshalRepeatTimes(l *lexer) (stateFn, error) {
 		if err != nil {
 			return nil, err
 		}
-		if field == "" {
+		if len(field) == 0 {
 			break
 		}
 		offset, err := parseTimeUnits(field)
 		if err != nil {
-			return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, field)
+			return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, field)
 		}
 		newRepeatTime.Offsets = append(newRepeatTime.Offsets, offset)
 	}
@@ -687,7 +704,7 @@ func unmarshalTimeZones(l *lexer) (stateFn, error) {
 			return nil, err
 		}
 
-		if offset == "" {
+		if len(offset) == 0 {
 			break
 		}
 
@@ -712,8 +729,7 @@ func unmarshalSessionEncryptionKey(l *lexer) (stateFn, error) {
 		return nil, err
 	}
 
-	encryptionKey := EncryptionKey(value)
-	l.desc.EncryptionKey = &encryptionKey
+	l.desc.EncryptionKey = EncryptionKey(value)
 	return s11, nil
 }
 
@@ -723,7 +739,7 @@ func unmarshalSessionAttribute(l *lexer) (stateFn, error) {
 		return nil, err
 	}
 
-	i := strings.IndexRune(value, ':')
+	i := bytes.IndexRune(value, ':')
 	var a Attribute
 	if i > 0 {
 		a = NewAttribute(value[:i], value[i+1:])
@@ -746,8 +762,8 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
-	if !anyOf(field, "audio", "video", "text", "application", "message") {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, field)
+	if !anyOf(field, kAudio, kVideo, kText, kApplication, kMessage) {
+		return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, field)
 	}
 	newMediaDesc.MediaName.Media = field
 
@@ -756,20 +772,23 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 	if err != nil {
 		return nil, err
 	}
-	parts := strings.Split(field, "/")
-	newMediaDesc.MediaName.Port.Value, err = parsePort(parts[0])
-	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidPortValue, parts[0])
+
+	i := bytes.IndexRune(field, '/')
+	if i == -1 {
+		i = len(field)
+	} else {
+		portRange, ok := parseUint(field[i+1:], 16)
+		if !ok {
+			return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, field[i+1:])
+		}
+		newMediaDesc.MediaName.Port.Range = uint16(portRange)
 	}
 
-	if len(parts) > 1 {
-		var portRange int
-		portRange, err = strconv.Atoi(parts[1])
-		if err != nil {
-			return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, parts)
-		}
-		newMediaDesc.MediaName.Port.Range = &portRange
+	port, ok := parseUint(field[:i], 16)
+	if !ok {
+		return nil, fmt.Errorf("%w `%s`", errSDPInvalidPortValue, field[:i])
 	}
+	newMediaDesc.MediaName.Port.Value = uint16(port)
 
 	// <proto>
 	field, err = l.readField()
@@ -780,9 +799,15 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
 	// https://tools.ietf.org/html/rfc4975#section-8.1
-	for _, proto := range strings.Split(field, "/") {
-		if !anyOf(proto, "UDP", "RTP", "AVP", "SAVP", "SAVPF", "TLS", "DTLS", "SCTP", "AVPF", "TCP", "MSRP") {
-			return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, field)
+	newMediaDesc.MediaName.Protos = make([][]byte, 0, countSegments(field, '/'))
+	for pos := 0; pos < len(field); pos++ {
+		field = field[pos:]
+		if pos = bytes.IndexRune(field, '/'); pos == -1 {
+			pos = len(field)
+		}
+		proto := field[:pos]
+		if !anyOf(proto, kUdp, kRtp, kAvp, kSavp, kSavpf, kTls, kDtls, kSctp, kAvpf, kTcp, kMsrp) {
+			return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, proto)
 		}
 		newMediaDesc.MediaName.Protos = append(newMediaDesc.MediaName.Protos, proto)
 	}
@@ -793,7 +818,7 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 		if err != nil {
 			return nil, err
 		}
-		if field == "" {
+		if len(field) == 0 {
 			break
 		}
 		newMediaDesc.MediaName.Formats = append(newMediaDesc.MediaName.Formats, field)
@@ -803,7 +828,7 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 		return nil, err
 	}
 
-	l.desc.MediaDescriptions = append(l.desc.MediaDescriptions, &newMediaDesc)
+	l.desc.MediaDescriptions = append(l.desc.MediaDescriptions, newMediaDesc)
 	return s12, nil
 }
 
@@ -814,8 +839,7 @@ func unmarshalMediaTitle(l *lexer) (stateFn, error) {
 	}
 
 	latestMediaDesc := l.desc.MediaDescriptions[len(l.desc.MediaDescriptions)-1]
-	mediaTitle := Information(value)
-	latestMediaDesc.MediaTitle = &mediaTitle
+	latestMediaDesc.MediaTitle = Information(value)
 	return s16, nil
 }
 
@@ -851,8 +875,7 @@ func unmarshalMediaEncryptionKey(l *lexer) (stateFn, error) {
 	}
 
 	latestMediaDesc := l.desc.MediaDescriptions[len(l.desc.MediaDescriptions)-1]
-	encryptionKey := EncryptionKey(value)
-	latestMediaDesc.EncryptionKey = &encryptionKey
+	latestMediaDesc.EncryptionKey = EncryptionKey(value)
 	return s14, nil
 }
 
@@ -862,7 +885,7 @@ func unmarshalMediaAttribute(l *lexer) (stateFn, error) {
 		return nil, err
 	}
 
-	i := strings.IndexRune(value, ':')
+	i := bytes.IndexRune(value, ':')
 	var a Attribute
 	if i > 0 {
 		a = NewAttribute(value[:i], value[i+1:])
@@ -875,49 +898,72 @@ func unmarshalMediaAttribute(l *lexer) (stateFn, error) {
 	return s14, nil
 }
 
-func parseTimeUnits(value string) (num int64, err error) {
+func parseTimeUnits(value []byte) (num int64, err error) {
 	if len(value) == 0 {
-		return 0, fmt.Errorf("%w `%v`", errSDPInvalidValue, value)
+		return 0, fmt.Errorf("%w `%s`", errSDPInvalidValue, value)
 	}
-	k := timeShorthand(value[len(value)-1])
-	if k > 0 {
-		num, err = strconv.ParseInt(value[:len(value)-1], 10, 64)
-	} else {
-		k = 1
-		num, err = strconv.ParseInt(value, 10, 64)
+	k, ok := timeShorthand(value[len(value)-1])
+	if ok {
+		value = value[:len(value)-1]
 	}
-	if err != nil {
-		return 0, fmt.Errorf("%w `%v`", errSDPInvalidValue, value)
+	num, ok = parseInt(value)
+	if !ok {
+		return 0, fmt.Errorf("%w `%s`", errSDPInvalidValue, value)
 	}
 	return num * k, nil
 }
 
-func timeShorthand(b byte) int64 {
+func timeShorthand(b byte) (int64, bool) {
 	// Some time offsets in the protocol can be provided with a shorthand
 	// notation. This code ensures to convert it to NTP timestamp format.
 	switch b {
 	case 'd': // days
-		return 86400
+		return 86400, true
 	case 'h': // hours
-		return 3600
+		return 3600, true
 	case 'm': // minutes
-		return 60
+		return 60, true
 	case 's': // seconds (allowed for completeness)
-		return 1
+		return 1, true
 	default:
-		return 0
+		return 1, false
 	}
 }
 
-func parsePort(value string) (int, error) {
-	port, err := strconv.Atoi(value)
-	if err != nil {
-		return 0, fmt.Errorf("%w `%v`", errSDPInvalidPortValue, port)
+func parseInt(value []byte) (int64, bool) {
+	sign := int64(1)
+	if len(value) != 0 && value[0] == '-' {
+		sign = -1
+		value = value[1:]
 	}
-
-	if port < 0 || port > 65536 {
-		return 0, fmt.Errorf("%w -- out of range `%v`", errSDPInvalidPortValue, port)
+	n, ok := parseUint(value, 64)
+	if !ok {
+		return 0, false
 	}
+	return sign * int64(n), true
+}
 
-	return port, nil
+func parseUint(value []byte, bits int) (uint64, bool) {
+	var n uint64
+	for _, ch := range value {
+		if ch < '0' || ch > '9' {
+			return 0, false
+		}
+
+		n = n*10 + uint64(ch-'0')
+	}
+	return n, n <= uint64(1<<bits)-1
+}
+
+func countSegments(value []byte, r rune) int {
+	n := 1
+	for pos := 0; pos < len(value); {
+		i := bytes.IndexRune(value[pos:], r)
+		if i == -1 {
+			break
+		}
+		pos += i + 1
+		n++
+	}
+	return n
 }

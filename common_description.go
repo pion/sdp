@@ -4,110 +4,189 @@
 package sdp
 
 import (
+	"bytes"
 	"strconv"
-	"strings"
 )
 
 // Information describes the "i=" field which provides textual information
 // about the session.
-type Information string
+type Information []byte
 
-func (i Information) String() string {
-	return string(i)
+func (t Information) Defined() bool {
+	return len(t) != 0
+}
+
+func (t Information) Len() int {
+	return len(t)
+}
+
+func (t Information) AppendTo(b []byte) []byte {
+	return append(b, t...)
+}
+
+// URI describes the "u=" field which provides the uri.
+type URI []byte
+
+func (t URI) Defined() bool {
+	return len(t) != 0
+}
+
+func (t URI) Len() int {
+	return len(t)
+}
+
+func (t URI) AppendTo(b []byte) []byte {
+	return append(b, t...)
 }
 
 // ConnectionInformation defines the representation for the "c=" field
 // containing connection data.
 type ConnectionInformation struct {
-	NetworkType string
-	AddressType string
-	Address     *Address
+	NetworkType []byte
+	AddressType []byte
+	Address     Address
 }
 
-func (c ConnectionInformation) String() string {
-	parts := []string{c.NetworkType, c.AddressType}
-	if c.Address != nil && c.Address.String() != "" {
-		parts = append(parts, c.Address.String())
+func (t ConnectionInformation) Defined() bool {
+	return len(t.NetworkType) > 0
+}
+
+func (t ConnectionInformation) Len() int {
+	n := t.Address.Len()
+	if n > 0 {
+		n++
 	}
-	return strings.Join(parts, " ")
+	n += len(t.NetworkType) + len(t.AddressType) + 1
+	return n
+}
+
+func (t ConnectionInformation) AppendTo(b []byte) []byte {
+	b = growByteSlice(b, t.Len())
+	b = append(b, t.NetworkType...)
+	b = append(b, ' ')
+	b = append(b, t.AddressType...)
+	if t.Address.Len() != 0 {
+		b = append(b, ' ')
+		b = t.Address.AppendTo(b)
+	}
+	return b
 }
 
 // Address desribes a structured address token from within the "c=" field.
 type Address struct {
-	Address string
-	TTL     *int
-	Range   *int
+	Address []byte
+	TTL     uint64
+	Range   uint64
 }
 
-func (c *Address) String() string {
-	var parts []string
-	parts = append(parts, c.Address)
-	if c.TTL != nil {
-		parts = append(parts, strconv.Itoa(*c.TTL))
+func (t Address) Len() int {
+	n := len(t.Address)
+	if t.TTL != 0 {
+		n += uintLen(t.TTL) + 1
 	}
-
-	if c.Range != nil {
-		parts = append(parts, strconv.Itoa(*c.Range))
+	if t.Range != 0 {
+		n += uintLen(t.Range) + 1
 	}
+	return n
+}
 
-	return strings.Join(parts, "/")
+func (t Address) AppendTo(b []byte) []byte {
+	b = growByteSlice(b, t.Len())
+	b = append(b, t.Address...)
+	if t.TTL != 0 {
+		b = append(b, '/')
+		b = strconv.AppendUint(b, t.TTL, 10)
+	}
+	if t.Range != 0 {
+		b = append(b, '/')
+		b = strconv.AppendUint(b, t.Range, 10)
+	}
+	return b
 }
 
 // Bandwidth describes an optional field which denotes the proposed bandwidth
 // to be used by the session or media.
 type Bandwidth struct {
 	Experimental bool
-	Type         string
+	Type         []byte
 	Bandwidth    uint64
 }
 
-func (b Bandwidth) String() string {
-	var output string
-	if b.Experimental {
-		output += "X-"
+func (t Bandwidth) Len() int {
+	n := len(t.Type) + uintLen(t.Bandwidth) + 1
+	if t.Experimental {
+		n += 2
 	}
-	output += b.Type + ":" + strconv.FormatUint(b.Bandwidth, 10)
-	return output
+	return n
+}
+
+func (t Bandwidth) AppendTo(b []byte) []byte {
+	b = growByteSlice(b, t.Len())
+	if t.Experimental {
+		b = append(b, "X-"...)
+	}
+	b = append(b, t.Type...)
+	b = append(b, ':')
+	b = strconv.AppendUint(b, t.Bandwidth, 10)
+	return b
 }
 
 // EncryptionKey describes the "k=" which conveys encryption key information.
-type EncryptionKey string
+type EncryptionKey []byte
 
-func (s EncryptionKey) String() string {
-	return string(s)
+func (t EncryptionKey) Defined() bool {
+	return len(t) != 0
+}
+
+func (t EncryptionKey) Len() int {
+	return len(t)
+}
+
+func (t EncryptionKey) AppendTo(b []byte) []byte {
+	return append(b, t...)
 }
 
 // Attribute describes the "a=" field which represents the primary means for
 // extending SDP.
 type Attribute struct {
-	Key   string
-	Value string
+	Key   []byte
+	Value []byte
 }
 
 // NewPropertyAttribute constructs a new attribute
-func NewPropertyAttribute(key string) Attribute {
+func NewPropertyAttribute(key []byte) Attribute {
 	return Attribute{
 		Key: key,
 	}
 }
 
 // NewAttribute constructs a new attribute
-func NewAttribute(key, value string) Attribute {
+func NewAttribute(key, value []byte) Attribute {
 	return Attribute{
 		Key:   key,
 		Value: value,
 	}
 }
 
-func (a Attribute) String() string {
-	output := a.Key
-	if len(a.Value) > 0 {
-		output += ":" + a.Value
+func (t Attribute) Len() int {
+	n := len(t.Key)
+	if t.Value != nil {
+		n += len(t.Value) + 1
 	}
-	return output
+	return n
+}
+
+func (t Attribute) AppendTo(b []byte) []byte {
+	b = growByteSlice(b, t.Len())
+	b = append(b, t.Key...)
+	if len(t.Value) > 0 {
+		b = append(b, ':')
+		b = append(b, t.Value...)
+	}
+	return b
 }
 
 // IsICECandidate returns true if the attribute key equals "candidate".
 func (a Attribute) IsICECandidate() bool {
-	return a.Key == "candidate"
+	return bytes.Equal(a.Key, []byte("candidate"))
 }
