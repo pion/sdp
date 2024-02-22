@@ -4,9 +4,9 @@
 package sdp
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 var (
@@ -97,7 +97,7 @@ var (
 // |   s15  |    |    14 |    |     | 15 |     |   |    | 12 |   |   |     |   |   |    |   |    |
 // |   s16  |    |    14 |    |     |    |  15 |   |    | 12 |   |   |     |   |   |    |   |    |
 // +--------+----+-------+----+-----+----+-----+---+----+----+---+---+-----+---+---+----+---+----+
-func (s *SessionDescription) Unmarshal(value []byte) error {
+func (s *SessionDescription) Unmarshal(value string) error {
 	l := new(lexer)
 	l.desc = s
 	l.value = value
@@ -499,7 +499,7 @@ func unmarshalURI(l *lexer) (stateFn, error) {
 		return nil, err
 	}
 
-	l.desc.URI = value
+	l.desc.URI = URI(value)
 
 	return s10, nil
 }
@@ -585,16 +585,16 @@ func unmarshalSessionBandwidth(l *lexer) (stateFn, error) {
 	return s5, nil
 }
 
-func unmarshalBandwidth(value []byte) (*Bandwidth, error) {
-	i := bytes.IndexRune(value, ':')
+func unmarshalBandwidth(value string) (*Bandwidth, error) {
+	i := strings.IndexRune(value, ':')
 	if i == -1 {
 		return nil, fmt.Errorf("%w `b=%v`", errSDPInvalidValue, value)
 	}
 
 	typ := value[:i]
-	experimental := bytes.HasPrefix(typ, kExperimental)
+	experimental := strings.HasPrefix(typ, kExperimental)
 	if experimental {
-		typ = bytes.TrimPrefix(typ, kExperimental)
+		typ = strings.TrimPrefix(typ, kExperimental)
 	} else if !anyOf(typ, kCt, kAs, kTias, kRs, kRr) {
 		// Set according to currently registered with IANA
 		// https://tools.ietf.org/html/rfc4566#section-5.8
@@ -739,7 +739,7 @@ func unmarshalSessionAttribute(l *lexer) (stateFn, error) {
 		return nil, err
 	}
 
-	i := bytes.IndexRune(value, ':')
+	i := strings.IndexRune(value, ':')
 	var a Attribute
 	if i > 0 {
 		a = NewAttribute(value[:i], value[i+1:])
@@ -773,7 +773,7 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 		return nil, err
 	}
 
-	i := bytes.IndexRune(field, '/')
+	i := strings.IndexRune(field, '/')
 	if i == -1 {
 		i = len(field)
 	} else {
@@ -799,10 +799,10 @@ func unmarshalMediaDescription(l *lexer) (stateFn, error) {
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
 	// https://tools.ietf.org/html/rfc4975#section-8.1
-	newMediaDesc.MediaName.Protos = make([][]byte, 0, countSegments(field, '/'))
+	newMediaDesc.MediaName.Protos = make([]string, 0, countSegments(field, '/'))
 	for pos := 0; pos < len(field); pos++ {
 		field = field[pos:]
-		if pos = bytes.IndexRune(field, '/'); pos == -1 {
+		if pos = strings.IndexRune(field, '/'); pos == -1 {
 			pos = len(field)
 		}
 		proto := field[:pos]
@@ -885,7 +885,7 @@ func unmarshalMediaAttribute(l *lexer) (stateFn, error) {
 		return nil, err
 	}
 
-	i := bytes.IndexRune(value, ':')
+	i := strings.IndexRune(value, ':')
 	var a Attribute
 	if i > 0 {
 		a = NewAttribute(value[:i], value[i+1:])
@@ -898,7 +898,7 @@ func unmarshalMediaAttribute(l *lexer) (stateFn, error) {
 	return s14, nil
 }
 
-func parseTimeUnits(value []byte) (num int64, err error) {
+func parseTimeUnits(value string) (num int64, err error) {
 	if len(value) == 0 {
 		return 0, fmt.Errorf("%w `%s`", errSDPInvalidValue, value)
 	}
@@ -930,7 +930,7 @@ func timeShorthand(b byte) (int64, bool) {
 	}
 }
 
-func parseInt(value []byte) (int64, bool) {
+func parseInt(value string) (int64, bool) {
 	sign := int64(1)
 	if len(value) != 0 && value[0] == '-' {
 		sign = -1
@@ -943,7 +943,7 @@ func parseInt(value []byte) (int64, bool) {
 	return sign * int64(n), true
 }
 
-func parseUint(value []byte, bits int) (uint64, bool) {
+func parseUint(value string, bits int) (uint64, bool) {
 	var n uint64
 	for _, ch := range value {
 		if ch < '0' || ch > '9' {
@@ -955,10 +955,10 @@ func parseUint(value []byte, bits int) (uint64, bool) {
 	return n, n <= uint64(1<<bits)-1
 }
 
-func countSegments(value []byte, r rune) int {
+func countSegments(value string, r rune) int {
 	n := 1
 	for pos := 0; pos < len(value); {
-		i := bytes.IndexRune(value[pos:], r)
+		i := strings.IndexRune(value[pos:], r)
 		if i == -1 {
 			break
 		}

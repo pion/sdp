@@ -27,13 +27,13 @@ func TestExtmap(t *testing.T) {
 
 	for i, u := range passingtests {
 		actual := ExtMap{}
-		require.NoError(t, actual.Unmarshal([]byte(u.parameter)))
+		require.NoError(t, actual.Unmarshal(u.parameter))
 		require.Equal(t, u.expected, actual.Marshal(), "%d: %+v", i, u)
 	}
 
 	for _, u := range failingtests {
 		actual := ExtMap{}
-		require.Error(t, actual.Unmarshal([]byte(u.parameter)))
+		require.Error(t, actual.Unmarshal(u.parameter))
 	}
 }
 
@@ -42,7 +42,7 @@ func TestTransportCCExtMap(t *testing.T) {
 	// a=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
 	e := ExtMap{
 		Value: 3,
-		URI:   []byte("http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"),
+		URI:   "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01",
 	}
 
 	require.EqualValues(t, e.Marshal(), "3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01")

@@ -4,7 +4,6 @@
 package sdp
 
 import (
-	"bytes"
 	"fmt"
 	"testing"
 )
@@ -17,19 +16,19 @@ func TestLexer(t *testing.T) {
 			"with linebreak":   "aaa \n",
 			"with linebreak 2": "aaa \r\n",
 		} {
-			l := &baseLexer{value: []byte(value)}
+			l := &baseLexer{value: value}
 			field, err := l.readField()
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !bytes.Equal(field, []byte("aaa")) {
+			if field != "aaa" {
 				t.Errorf("%s: aaa not parsed, got: '%v'", k, field)
 			}
 		}
 	})
 
 	t.Run("syntax error", func(t *testing.T) {
-		l := &baseLexer{value: []byte("12NaN")}
+		l := &baseLexer{value: "12NaN"}
 		_, err := l.readUint64Field()
 		if err != nil {
 			fmt.Println("error message:", err.Error())
@@ -39,14 +38,14 @@ func TestLexer(t *testing.T) {
 	})
 
 	t.Run("many fields", func(t *testing.T) {
-		l := &baseLexer{value: []byte("aaa  123\nf1 f2\nlast")}
+		l := &baseLexer{value: "aaa  123\nf1 f2\nlast"}
 
 		t.Run("first line", func(t *testing.T) {
 			field, err := l.readField()
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !bytes.Equal(field, []byte("aaa")) {
+			if field != "aaa" {
 				t.Errorf("aaa not parsed, got: '%v'", field)
 			}
 
@@ -68,7 +67,7 @@ func TestLexer(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !bytes.Equal(field, []byte("f1")) {
+			if field != "f1" {
 				t.Errorf("value not parsed, got: '%v'", field)
 			}
 
@@ -76,7 +75,7 @@ func TestLexer(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !bytes.Equal(field, []byte("f2")) {
+			if field != "f2" {
 				t.Errorf("value not parsed, got: '%v'", field)
 			}
 
@@ -84,7 +83,7 @@ func TestLexer(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !bytes.Equal(field, []byte("")) {
+			if field != "" {
 				t.Errorf("value not parsed, got: '%v'", field)
 			}
 
@@ -98,7 +97,7 @@ func TestLexer(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !bytes.Equal(field, []byte("last")) {
+			if field != "last" {
 				t.Errorf("value not parsed, got: '%v'", field)
 			}
 		})
@@ -109,7 +108,7 @@ var Sum uint64
 
 func BenchmarkFoo(b *testing.B) {
 	l := &baseLexer{
-		value: []byte("123456789000"),
+		value: "123456789000",
 	}
 	for i := 0; i < b.N; i++ {
 		n, _ := l.readUint64Field()

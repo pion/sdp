@@ -4,7 +4,6 @@
 package sdp
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -28,7 +27,7 @@ func (e syntaxError) Error() string {
 }
 
 type baseLexer struct {
-	value []byte
+	value string
 	pos   int
 	attrs []Attribute
 }
@@ -116,7 +115,7 @@ func (l *baseLexer) readUint64Field() (i uint64, err error) {
 }
 
 // Returns next field on this line or empty string if no more fields on line
-func (l *baseLexer) readField() ([]byte, error) {
+func (l *baseLexer) readField() (string, error) {
 	start := l.pos
 	var stop int
 	for {
@@ -124,21 +123,21 @@ func (l *baseLexer) readField() ([]byte, error) {
 		ch := l.readByte()
 		if ch == eof {
 			if stop == start {
-				return nil, io.EOF
+				return "", io.EOF
 			}
 			break
 		}
 
 		if isNewline(ch) {
 			if err := l.unreadByte(); err != nil {
-				return nil, err
+				return "", err
 			}
 			break
 		}
 
 		if isWhitespace(ch) {
 			if err := l.readWhitespace(); err != nil {
-				return nil, err
+				return "", err
 			}
 			break
 		}
@@ -147,13 +146,13 @@ func (l *baseLexer) readField() ([]byte, error) {
 }
 
 // Returns symbols until line end
-func (l *baseLexer) readLine() ([]byte, error) {
+func (l *baseLexer) readLine() (string, error) {
 	start := l.pos
 	trim := 1
 	for {
 		switch l.readByte() {
 		case eof:
-			return nil, io.EOF
+			return "", io.EOF
 		case '\r':
 			trim++
 		case '\n':
@@ -162,12 +161,12 @@ func (l *baseLexer) readLine() ([]byte, error) {
 	}
 }
 
-func (l *baseLexer) readUntil(until byte) ([]byte, error) {
+func (l *baseLexer) readUntil(until byte) (string, error) {
 	start := l.pos
 	for {
 		switch l.readByte() {
 		case eof:
-			return nil, io.EOF
+			return "", io.EOF
 		case until:
 			return l.value[start:l.pos], nil
 		}
@@ -207,9 +206,9 @@ func isNewline(ch byte) bool { return ch == '\n' || ch == '\r' }
 
 func isWhitespace(ch byte) bool { return ch == ' ' || ch == '\t' }
 
-func anyOf(element []byte, data ...[]byte) bool {
+func anyOf(element string, data ...string) bool {
 	for _, v := range data {
-		if bytes.Equal(element, v) {
+		if element == v {
 			return true
 		}
 	}

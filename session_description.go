@@ -4,7 +4,6 @@
 package sdp
 
 import (
-	"bytes"
 	"fmt"
 	"strconv"
 )
@@ -71,13 +70,13 @@ type SessionDescription struct {
 }
 
 // Attribute returns the value of an attribute and if it exists
-func (s *SessionDescription) Attribute(key []byte) ([]byte, bool) {
+func (s *SessionDescription) Attribute(key string) (string, bool) {
 	for _, a := range s.Attributes {
-		if bytes.Equal(a.Key, key) {
+		if a.Key == key {
 			return a.Value, true
 		}
 	}
-	return nil, false
+	return "", false
 }
 
 // Version describes the value provided by the "v=" field which gives
@@ -99,12 +98,12 @@ func (v Version) String() string {
 // Origin defines the structure for the "o=" field which provides the
 // originator of the session plus a session identifier and version number.
 type Origin struct {
-	Username       []byte
+	Username       string
 	SessionID      uint64
 	SessionVersion uint64
-	NetworkType    []byte
-	AddressType    []byte
-	UnicastAddress []byte
+	NetworkType    string
+	AddressType    string
+	UnicastAddress string
 }
 
 func (o Origin) Len() int {
@@ -147,7 +146,7 @@ func (o Origin) String() string {
 
 // SessionName describes a structured representations for the "s=" field
 // and is the textual session name.
-type SessionName []byte
+type SessionName string
 
 func (s SessionName) Defined() bool {
 	return len(s) != 0
@@ -168,7 +167,7 @@ func (s SessionName) String() string {
 // EmailAddress describes a structured representations for the "e=" line
 // which specifies email contact information for the person responsible for
 // the conference.
-type EmailAddress []byte
+type EmailAddress string
 
 func (e EmailAddress) Defined() bool {
 	return len(e) != 0
@@ -189,7 +188,7 @@ func (e EmailAddress) String() string {
 // PhoneNumber describes a structured representations for the "p=" line
 // specify phone contact information for the person responsible for the
 // conference.
-type PhoneNumber []byte
+type PhoneNumber string
 
 func (p PhoneNumber) Defined() bool {
 	return len(p) != 0

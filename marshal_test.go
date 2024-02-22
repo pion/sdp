@@ -41,34 +41,34 @@ func TestMarshalCanonical(t *testing.T) {
 	sd := &SessionDescription{
 		Version: 0,
 		Origin: Origin{
-			Username:       []byte("jdoe"),
+			Username:       "jdoe",
 			SessionID:      uint64(2890844526),
 			SessionVersion: uint64(2890842807),
-			NetworkType:    []byte("IN"),
-			AddressType:    []byte("IP4"),
-			UnicastAddress: []byte("10.47.16.5"),
+			NetworkType:    "IN",
+			AddressType:    "IP4",
+			UnicastAddress: "10.47.16.5",
 		},
-		SessionName:        []byte("SDP Seminar"),
+		SessionName:        "SDP Seminar",
 		SessionInformation: Information("A Seminar on the session description protocol"),
-		URI:                []byte("http://www.example.com/seminars/sdp.pdf"),
+		URI:                "http://www.example.com/seminars/sdp.pdf",
 		EmailAddress:       EmailAddress("j.doe@example.com (Jane Doe)"),
 		PhoneNumber:        PhoneNumber("+1 617 555-6011"),
 		ConnectionInformation: ConnectionInformation{
-			NetworkType: []byte("IN"),
-			AddressType: []byte("IP4"),
+			NetworkType: "IN",
+			AddressType: "IP4",
 			Address: Address{
-				Address: []byte("224.2.17.12"),
+				Address: "224.2.17.12",
 				TTL:     127,
 			},
 		},
 		Bandwidth: []Bandwidth{
 			{
 				Experimental: true,
-				Type:         []byte("YZ"),
+				Type:         "YZ",
 				Bandwidth:    128,
 			},
 			{
-				Type:      []byte("AS"),
+				Type:      "AS",
 				Bandwidth: 12345,
 			},
 		},
@@ -106,50 +106,50 @@ func TestMarshalCanonical(t *testing.T) {
 		},
 		EncryptionKey: EncryptionKey("prompt"),
 		Attributes: []Attribute{
-			NewAttribute([]byte("candidate"), []byte("0 1 UDP 2113667327 203.0.113.1 54400 typ host")),
-			NewAttribute([]byte("recvonly"), nil),
+			NewAttribute("candidate", "0 1 UDP 2113667327 203.0.113.1 54400 typ host"),
+			NewAttribute("recvonly", ""),
 		},
 		MediaDescriptions: []MediaDescription{
 			{
 				MediaName: MediaName{
-					Media: []byte("audio"),
+					Media: "audio",
 					Port: RangedPort{
 						Value: 49170,
 					},
-					Protos:  [][]byte{[]byte("RTP"), []byte("AVP")},
-					Formats: [][]byte{[]byte("0")},
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"0"},
 				},
 				MediaTitle: Information("Vivamus a posuere nisl"),
 				ConnectionInformation: ConnectionInformation{
-					NetworkType: []byte("IN"),
-					AddressType: []byte("IP4"),
+					NetworkType: "IN",
+					AddressType: "IP4",
 					Address: Address{
-						Address: []byte("203.0.113.1"),
+						Address: "203.0.113.1",
 					},
 				},
 				Bandwidth: []Bandwidth{
 					{
 						Experimental: true,
-						Type:         []byte("YZ"),
+						Type:         "YZ",
 						Bandwidth:    128,
 					},
 				},
 				EncryptionKey: EncryptionKey("prompt"),
 				Attributes: []Attribute{
-					NewAttribute([]byte("sendrecv"), nil),
+					NewAttribute("sendrecv", ""),
 				},
 			},
 			{
 				MediaName: MediaName{
-					Media: []byte("video"),
+					Media: "video",
 					Port: RangedPort{
 						Value: 51372,
 					},
-					Protos:  [][]byte{[]byte("RTP"), []byte("AVP")},
-					Formats: [][]byte{[]byte("99")},
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"99"},
 				},
 				Attributes: []Attribute{
-					NewAttribute([]byte("rtpmap"), []byte("99 h263-1998/90000")),
+					NewAttribute("rtpmap", "99 h263-1998/90000"),
 				},
 			},
 		},
@@ -165,7 +165,7 @@ func TestMarshalCanonical(t *testing.T) {
 func BenchmarkMarshal(b *testing.B) {
 	b.ReportAllocs()
 	var sd SessionDescription
-	err := sd.Unmarshal([]byte(BigSDP))
+	err := sd.Unmarshal(BigSDP)
 	if err != nil {
 		b.Fatal(err)
 	}

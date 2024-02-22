@@ -4,13 +4,12 @@
 package sdp
 
 import (
-	"bytes"
 	"strconv"
 )
 
 // Information describes the "i=" field which provides textual information
 // about the session.
-type Information []byte
+type Information string
 
 func (t Information) Defined() bool {
 	return len(t) != 0
@@ -25,7 +24,7 @@ func (t Information) AppendTo(b []byte) []byte {
 }
 
 // URI describes the "u=" field which provides the uri.
-type URI []byte
+type URI string
 
 func (t URI) Defined() bool {
 	return len(t) != 0
@@ -42,8 +41,8 @@ func (t URI) AppendTo(b []byte) []byte {
 // ConnectionInformation defines the representation for the "c=" field
 // containing connection data.
 type ConnectionInformation struct {
-	NetworkType []byte
-	AddressType []byte
+	NetworkType string
+	AddressType string
 	Address     Address
 }
 
@@ -74,7 +73,7 @@ func (t ConnectionInformation) AppendTo(b []byte) []byte {
 
 // Address desribes a structured address token from within the "c=" field.
 type Address struct {
-	Address []byte
+	Address string
 	TTL     uint64
 	Range   uint64
 }
@@ -108,7 +107,7 @@ func (t Address) AppendTo(b []byte) []byte {
 // to be used by the session or media.
 type Bandwidth struct {
 	Experimental bool
-	Type         []byte
+	Type         string
 	Bandwidth    uint64
 }
 
@@ -132,7 +131,7 @@ func (t Bandwidth) AppendTo(b []byte) []byte {
 }
 
 // EncryptionKey describes the "k=" which conveys encryption key information.
-type EncryptionKey []byte
+type EncryptionKey string
 
 func (t EncryptionKey) Defined() bool {
 	return len(t) != 0
@@ -149,19 +148,19 @@ func (t EncryptionKey) AppendTo(b []byte) []byte {
 // Attribute describes the "a=" field which represents the primary means for
 // extending SDP.
 type Attribute struct {
-	Key   []byte
-	Value []byte
+	Key   string
+	Value string
 }
 
 // NewPropertyAttribute constructs a new attribute
-func NewPropertyAttribute(key []byte) Attribute {
+func NewPropertyAttribute(key string) Attribute {
 	return Attribute{
 		Key: key,
 	}
 }
 
 // NewAttribute constructs a new attribute
-func NewAttribute(key, value []byte) Attribute {
+func NewAttribute(key, value string) Attribute {
 	return Attribute{
 		Key:   key,
 		Value: value,
@@ -170,7 +169,7 @@ func NewAttribute(key, value []byte) Attribute {
 
 func (t Attribute) Len() int {
 	n := len(t.Key)
-	if t.Value != nil {
+	if t.Value != "" {
 		n += len(t.Value) + 1
 	}
 	return n
@@ -188,5 +187,5 @@ func (t Attribute) AppendTo(b []byte) []byte {
 
 // IsICECandidate returns true if the attribute key equals "candidate".
 func (a Attribute) IsICECandidate() bool {
-	return bytes.Equal(a.Key, []byte("candidate"))
+	return a.Key == "candidate"
 }

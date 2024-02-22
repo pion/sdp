@@ -4,11 +4,11 @@
 package sdp
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/pion/randutil"
 )
@@ -66,11 +66,11 @@ func newSessionID() (uint64, error) {
 // Codec represents a codec
 type Codec struct {
 	PayloadType        uint8
-	Name               []byte
+	Name               string
 	ClockRate          uint32
-	EncodingParameters []byte
-	Fmtp               []byte
-	RTCPFeedback       [][]byte
+	EncodingParameters string
+	Fmtp               string
+	RTCPFeedback       []string
 }
 
 const (
@@ -120,7 +120,7 @@ func (c Codec) AppendTo(b []byte) []byte {
 
 func parseRtpmap(rtpmap Attribute) (codec Codec, err error) {
 	// <payload type> <encoding name>/<clock rate>[/<encoding parameters>]
-	i := bytes.IndexRune(rtpmap.Value, ' ')
+	i := strings.IndexRune(rtpmap.Value, ' ')
 	if i == -1 {
 		return codec, errExtractCodecRtpmap
 	}
@@ -131,7 +131,7 @@ func parseRtpmap(rtpmap Attribute) (codec Codec, err error) {
 	}
 	codec.PayloadType = uint8(ptInt)
 
-	split := bytes.Split(rtpmap.Value[i+1:], kSlash)
+	split := strings.Split(rtpmap.Value[i+1:], kSlash)
 	codec.Name = split[0]
 	parts := len(split)
 	if parts > 1 {
@@ -150,7 +150,7 @@ func parseRtpmap(rtpmap Attribute) (codec Codec, err error) {
 
 func parseFmtp(fmtp Attribute) (codec Codec, err error) {
 	// <format> <format specific parameters>
-	i := bytes.IndexRune(fmtp.Value, ' ')
+	i := strings.IndexRune(fmtp.Value, ' ')
 	if i == -1 {
 		return codec, errExtractCodecFmtp
 	}
@@ -168,7 +168,7 @@ func parseFmtp(fmtp Attribute) (codec Codec, err error) {
 
 func parseRtcpFb(rtcpFb Attribute) (codec Codec, err error) {
 	// <payload type> <RTCP feedback type> [<RTCP feedback parameter>]
-	i := bytes.IndexRune(rtcpFb.Value, ' ')
+	i := strings.IndexRune(rtcpFb.Value, ' ')
 	if i == -1 {
 		return codec, errExtractCodecRtcpFb
 	}
@@ -224,17 +224,18 @@ func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
 
 	for _, m := range s.MediaDescriptions {
 		for _, a := range m.Attributes {
-			if bytes.Equal(a.Key, kRtpmap) {
+			switch a.Key {
+			case "rtpmap":
 				codec, err := parseRtpmap(a)
 				if err == nil {
 					mergeCodecs(codec, codecs)
 				}
-			} else if bytes.Equal(a.Key, kFmtp) {
+			case "fmtp":
 				codec, err := parseFmtp(a)
 				if err == nil {
 					mergeCodecs(codec, codecs)
 				}
-			} else if bytes.Equal(a.Key, kRtcpFb) {
+			case "rtcp-fb":
 				codec, err := parseRtcpFb(a)
 				if err == nil {
 					mergeCodecs(codec, codecs)
@@ -246,21 +247,21 @@ func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
 	return codecs
 }
 
-func equivalentFmtp(want, got []byte) bool {
-	wantSplit := bytes.Split(want, kSemicolon)
-	gotSplit := bytes.Split(got, kSemicolon)
+func equivalentFmtp(want, got string) bool {
+	wantSplit := strings.Split(want, kSemicolon)
+	gotSplit := strings.Split(got, kSemicolon)
 
 	if len(wantSplit) != len(gotSplit) {
 		return false
 	}
 
-	sort.Slice(wantSplit, func(i, j int) bool { return bytes.Compare(wantSplit[i], wantSplit[j]) == -1 })
-	sort.Slice(gotSplit, func(i, j int) bool { return bytes.Compare(gotSplit[i], gotSplit[j]) == -1 })
+	sort.Slice(wantSplit, func(i, j int) bool { return strings.Compare(wantSplit[i], wantSplit[j]) == -1 })
+	sort.Slice(gotSplit, func(i, j int) bool { return strings.Compare(gotSplit[i], gotSplit[j]) == -1 })
 
 	for i, wantPart := range wantSplit {
-		wantPart = bytes.TrimSpace(wantPart)
-		gotPart := bytes.TrimSpace(gotSplit[i])
-		if !bytes.Equal(gotPart, wantPart) {
+		wantPart = strings.TrimSpace(wantPart)
+		gotPart := strings.TrimSpace(gotSplit[i])
+		if gotPart != wantPart {
 			return false
 		}
 	}
@@ -269,16 +270,16 @@ func equivalentFmtp(want, got []byte) bool {
 }
 
 func codecsMatch(wanted, got Codec) bool {
-	if wanted.Name != nil && !bytes.EqualFold(wanted.Name, got.Name) {
+	if wanted.Name != "" && !strings.EqualFold(wanted.Name, got.Name) {
 		return false
 	}
 	if wanted.ClockRate != 0 && wanted.ClockRate != got.ClockRate {
 		return false
 	}
-	if wanted.EncodingParameters != nil && !bytes.Equal(wanted.EncodingParameters, got.EncodingParameters) {
+	if wanted.EncodingParameters != "" && wanted.EncodingParameters != got.EncodingParameters {
 		return false
 	}
-	if wanted.Fmtp != nil && !equivalentFmtp(wanted.Fmtp, got.Fmtp) {
+	if wanted.Fmtp != "" && !equivalentFmtp(wanted.Fmtp, got.Fmtp) {
 		return false
 	}
 

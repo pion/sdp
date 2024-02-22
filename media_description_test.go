@@ -14,10 +14,10 @@ func TestWithFingerprint(t *testing.T) {
 
 	assert.EqualValues(t, []Attribute(nil), m.Attributes)
 
-	m = m.WithFingerprint([]byte("testalgorithm"), []byte("testfingerprint"))
+	m = m.WithFingerprint("testalgorithm", "testfingerprint")
 
 	assert.EqualValues(t, []Attribute{
-		{[]byte("fingerprint"), []byte("testalgorithm testfingerprint")},
+		{"fingerprint", "testalgorithm testfingerprint"},
 	},
 		m.Attributes)
 }

@@ -4,7 +4,6 @@
 package sdp
 
 import (
-	"bytes"
 	"strconv"
 )
 
@@ -39,13 +38,13 @@ type MediaDescription struct {
 }
 
 // Attribute returns the value of an attribute and if it exists
-func (d *MediaDescription) Attribute(key []byte) ([]byte, bool) {
+func (d *MediaDescription) Attribute(key string) (string, bool) {
 	for _, a := range d.Attributes {
-		if bytes.Equal(a.Key, key) {
+		if a.Key == key {
 			return a.Value, true
 		}
 	}
-	return nil, false
+	return "", false
 }
 
 // RangedPort supports special format for the media field "m=" port value. If
@@ -77,10 +76,10 @@ func (p RangedPort) AppendTo(b []byte) []byte {
 
 // MediaName describes the "m=" field storage structure.
 type MediaName struct {
-	Media   []byte
+	Media   string
 	Port    RangedPort
-	Protos  [][]byte
-	Formats [][]byte
+	Protos  []string
+	Formats []string
 }
 
 func (m MediaName) Len() int {

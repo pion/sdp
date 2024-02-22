@@ -4,9 +4,9 @@
 package sdp
 
 import (
-	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -47,7 +47,7 @@ const (
 )
 
 var (
-	ExtMapValueTransportCCURI = []byte("http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01")
+	ExtMapValueTransportCCURI = "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"
 )
 
 // API to match draft-ietf-rtcweb-jsep
@@ -98,20 +98,20 @@ func NewJSEPSessionDescription(identity bool) (*SessionDescription, error) {
 }
 
 // WithPropertyAttribute adds a property attribute 'a=key' to the session description
-func (s *SessionDescription) WithPropertyAttribute(key []byte) *SessionDescription {
+func (s *SessionDescription) WithPropertyAttribute(key string) *SessionDescription {
 	s.Attributes = append(s.Attributes, NewPropertyAttribute(key))
 	return s
 }
 
 // WithValueAttribute adds a value attribute 'a=key:value' to the session description
-func (s *SessionDescription) WithValueAttribute(key, value []byte) *SessionDescription {
+func (s *SessionDescription) WithValueAttribute(key, value string) *SessionDescription {
 	s.Attributes = append(s.Attributes, NewAttribute(key, value))
 	return s
 }
 
 // WithFingerprint adds a fingerprint to the session description
-func (s *SessionDescription) WithFingerprint(algorithm, value []byte) *SessionDescription {
-	return s.WithValueAttribute(kFingerprint, bytes.Join([][]byte{algorithm, value}, kSpace))
+func (s *SessionDescription) WithFingerprint(algorithm, value string) *SessionDescription {
+	return s.WithValueAttribute(kFingerprint, strings.Join([]string{algorithm, value}, kSpace))
 }
 
 // WithMedia adds a media description to the session description
@@ -122,12 +122,12 @@ func (s *SessionDescription) WithMedia(md MediaDescription) *SessionDescription 
 
 // NewJSEPMediaDescription creates a new MediaName with
 // some settings that are required by the JSEP spec.
-func NewJSEPMediaDescription(codecType []byte, _ []string) MediaDescription {
+func NewJSEPMediaDescription(codecType string, _ []string) MediaDescription {
 	return MediaDescription{
 		MediaName: MediaName{
 			Media:  codecType,
 			Port:   RangedPort{Value: 9},
-			Protos: [][]byte{kUdp, kTls, kRtp, kSavp},
+			Protos: []string{kUdp, kTls, kRtp, kSavp},
 		},
 		ConnectionInformation: ConnectionInformation{
 			NetworkType: kIn,
@@ -140,24 +140,24 @@ func NewJSEPMediaDescription(codecType []byte, _ []string) MediaDescription {
 }
 
 // WithPropertyAttribute adds a property attribute 'a=key' to the media description
-func (d *MediaDescription) WithPropertyAttribute(key []byte) *MediaDescription {
+func (d *MediaDescription) WithPropertyAttribute(key string) *MediaDescription {
 	d.Attributes = append(d.Attributes, NewPropertyAttribute(key))
 	return d
 }
 
 // WithValueAttribute adds a value attribute 'a=key:value' to the media description
-func (d *MediaDescription) WithValueAttribute(key, value []byte) *MediaDescription {
+func (d *MediaDescription) WithValueAttribute(key, value string) *MediaDescription {
 	d.Attributes = append(d.Attributes, NewAttribute(key, value))
 	return d
 }
 
 // WithFingerprint adds a fingerprint to the media description
-func (d *MediaDescription) WithFingerprint(algorithm, value []byte) *MediaDescription {
-	return d.WithValueAttribute(kFingerprint, bytes.Join([][]byte{algorithm, value}, kSpace))
+func (d *MediaDescription) WithFingerprint(algorithm, value string) *MediaDescription {
+	return d.WithValueAttribute(kFingerprint, strings.Join([]string{algorithm, value}, kSpace))
 }
 
 // WithICECredentials adds ICE credentials to the media description
-func (d *MediaDescription) WithICECredentials(username, password []byte) *MediaDescription {
+func (d *MediaDescription) WithICECredentials(username, password string) *MediaDescription {
 	return d.
 		WithValueAttribute(kIceUfrag, username).
 		WithValueAttribute(kIcePwd, password)
@@ -165,15 +165,15 @@ func (d *MediaDescription) WithICECredentials(username, password []byte) *MediaD
 
 // WithCodec adds codec information to the media description
 func (d *MediaDescription) WithCodec(payloadType uint8, name string, clockrate uint32, channels uint16, fmtp string) *MediaDescription {
-	d.MediaName.Formats = append(d.MediaName.Formats, []byte(strconv.FormatUint(uint64(payloadType), 10)))
+	d.MediaName.Formats = append(d.MediaName.Formats, strconv.FormatUint(uint64(payloadType), 10))
 	rtpmap := fmt.Sprintf("%d %s/%d", payloadType, name, clockrate)
 	if channels > 0 {
 		rtpmap += fmt.Sprintf("/%d", channels)
 	}
 	// TODO
-	d.WithValueAttribute(kRtpmap, []byte(rtpmap))
+	d.WithValueAttribute(kRtpmap, rtpmap)
 	if fmtp != "" {
-		d.WithValueAttribute(kFmtp, []byte(fmt.Sprintf("%d %s", payloadType, fmtp)))
+		d.WithValueAttribute(kFmtp, fmt.Sprintf("%d %s", payloadType, fmtp))
 	}
 	return d
 }
@@ -181,21 +181,21 @@ func (d *MediaDescription) WithCodec(payloadType uint8, name string, clockrate u
 // WithMediaSource adds media source information to the media description
 func (d *MediaDescription) WithMediaSource(ssrc uint32, cname, streamLabel, label string) *MediaDescription {
 	return d.
-		WithValueAttribute(kSsrc, []byte(fmt.Sprintf("%d cname:%s", ssrc, cname))). // Deprecated but not phased out?
-		WithValueAttribute(kSsrc, []byte(fmt.Sprintf("%d msid:%s %s", ssrc, streamLabel, label))).
-		WithValueAttribute(kSsrc, []byte(fmt.Sprintf("%d mslabel:%s", ssrc, streamLabel))). // Deprecated but not phased out?
-		WithValueAttribute(kSsrc, []byte(fmt.Sprintf("%d label:%s", ssrc, label)))          // Deprecated but not phased out?
+		WithValueAttribute(kSsrc, fmt.Sprintf("%d cname:%s", ssrc, cname)). // Deprecated but not phased out?
+		WithValueAttribute(kSsrc, fmt.Sprintf("%d msid:%s %s", ssrc, streamLabel, label)).
+		WithValueAttribute(kSsrc, fmt.Sprintf("%d mslabel:%s", ssrc, streamLabel)). // Deprecated but not phased out?
+		WithValueAttribute(kSsrc, fmt.Sprintf("%d label:%s", ssrc, label))          // Deprecated but not phased out?
 }
 
 // WithCandidate adds an ICE candidate to the media description
 // Deprecated: use WithICECandidate instead
-func (d *MediaDescription) WithCandidate(value []byte) *MediaDescription {
+func (d *MediaDescription) WithCandidate(value string) *MediaDescription {
 	return d.WithValueAttribute(kCandidate, value)
 }
 
 // WithExtMap adds an extmap to the media description
 func (d *MediaDescription) WithExtMap(e ExtMap) *MediaDescription {
-	return d.WithPropertyAttribute(e.Marshal())
+	return d.WithPropertyAttribute(string(e.Marshal()))
 }
 
 // WithTransportCCExtMap adds an extmap to the media description

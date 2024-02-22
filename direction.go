@@ -60,18 +60,3 @@ func (t Direction) String() string {
 		return directionUnknownStr
 	}
 }
-
-func (t Direction) Bytes() []byte {
-	switch t {
-	case DirectionSendRecv:
-		return kSendRecv
-	case DirectionSendOnly:
-		return kSendOnly
-	case DirectionRecvOnly:
-		return kRecvOnly
-	case DirectionInactive:
-		return kInactive
-	default:
-		return nil
-	}
-}

@@ -4,9 +4,9 @@
 package sdp
 
 import (
-	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // Default ext values
@@ -26,29 +26,29 @@ const (
 // ExtMap represents the activation of a single RTP header extension
 type ExtMap struct {
 	Value     int
-	Direction []byte
-	URI       []byte
-	ExtAttr   []byte
+	Direction string
+	URI       string
+	ExtAttr   string
 }
 
 // Clone converts this object to an Attribute
 func (e ExtMap) Clone() Attribute {
-	return Attribute{Key: kExtmap, Value: e.AppendTo(nil)}
+	return Attribute{Key: kExtmap, Value: string(e.AppendTo(nil))}
 }
 
 // Unmarshal creates an Extmap from a string
-func (e ExtMap) Unmarshal(raw []byte) error {
-	parts := bytes.SplitN(raw, kColon, 2)
+func (e ExtMap) Unmarshal(raw string) error {
+	parts := strings.SplitN(raw, kColon, 2)
 	if len(parts) != 2 {
 		return fmt.Errorf("%w: %v", errSyntaxError, raw)
 	}
 
-	fields := bytes.Fields(parts[1])
+	fields := strings.Fields(parts[1])
 	if len(fields) < 2 {
 		return fmt.Errorf("%w: %v", errSyntaxError, raw)
 	}
 
-	valdir := bytes.Split(fields[0], kSlash)
+	valdir := strings.Split(fields[0], kSlash)
 	value, ok := parseUint(valdir[0], 8)
 	if !ok || value == 0 {
 		return fmt.Errorf("%w: %v", errSyntaxError, valdir[0])
