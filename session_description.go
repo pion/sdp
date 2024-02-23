@@ -232,13 +232,7 @@ type TimeZone struct {
 }
 
 func (z TimeZone) ByteLen() int {
-	n := uintLen(z.AdjustmentTime) + 1
-	if z.Offset < 0 {
-		n += uintLen(uint64(-z.Offset)) + 1
-	} else {
-		n += uintLen(uint64(z.Offset))
-	}
-	return n
+	return uintLen(z.AdjustmentTime) + intLen(z.Offset) + 1
 }
 
 func (z TimeZone) MarshalAppend(b []byte) []byte {

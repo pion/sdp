@@ -54,9 +54,9 @@ type RepeatTime struct {
 }
 
 func (r RepeatTime) ByteLen() int {
-	n := uintLen(uint64(r.Interval)) + uintLen(uint64(r.Duration)) + 1
+	n := intLen(r.Interval) + intLen(r.Duration) + 1
 	for _, o := range r.Offsets {
-		n += uintLen(uint64(o)) + 1
+		n += intLen(o) + 1
 	}
 	return n
 }
@@ -68,7 +68,7 @@ func (r RepeatTime) MarshalAppend(b []byte) []byte {
 	b = strconv.AppendInt(b, r.Duration, 10)
 	for _, o := range r.Offsets {
 		b = append(b, ' ')
-		b = strconv.AppendUint(b, uint64(o), 10)
+		b = strconv.AppendInt(b, o, 10)
 	}
 	return b
 }

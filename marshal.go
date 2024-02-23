@@ -198,6 +198,13 @@ func (s *SessionDescription) MarshalAppend(b []byte) []byte {
 	return b
 }
 
+func intLen(n int64) int {
+	if n < 0 {
+		return uintLen(uint64(-n)) + 1
+	}
+	return uintLen(uint64(n))
+}
+
 func uintLen(n uint64) int {
 	if n == 0 {
 		return 1
