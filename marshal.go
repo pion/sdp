@@ -101,67 +101,100 @@ func (s *SessionDescription) Marshal() ([]byte, error) {
 
 func (s *SessionDescription) AppendTo(b []byte) []byte {
 	b = growByteSlice(b, s.Len())
-	b = appendAttribute(b, "v=", s.Version)
-	b = appendAttribute(b, "o=", s.Origin)
-	b = appendAttribute(b, "s=", s.SessionName)
+	b = append(b, "v="...)
+	b = s.Version.AppendTo(b)
+	b = append(b, "\r\n"...)
+	b = append(b, "o="...)
+	b = s.Origin.AppendTo(b)
+	b = append(b, "\r\n"...)
+	b = append(b, "s="...)
+	b = s.SessionName.AppendTo(b)
+	b = append(b, "\r\n"...)
 	if s.SessionInformation.Defined() {
-		b = appendAttribute(b, "i=", s.SessionInformation)
+		b = append(b, "i="...)
+		b = s.SessionInformation.AppendTo(b)
+		b = append(b, "\r\n"...)
 	}
 	if s.URI.Defined() {
-		b = appendAttribute(b, "u=", s.URI)
+		b = append(b, "u="...)
+		b = s.URI.AppendTo(b)
+		b = append(b, "\r\n"...)
 	}
 	if s.EmailAddress.Defined() {
-		b = appendAttribute(b, "e=", s.EmailAddress)
+		b = append(b, "e="...)
+		b = s.EmailAddress.AppendTo(b)
+		b = append(b, "\r\n"...)
 	}
 	if s.PhoneNumber.Defined() {
-		b = appendAttribute(b, "p=", s.PhoneNumber)
+		b = append(b, "p="...)
+		b = s.PhoneNumber.AppendTo(b)
+		b = append(b, "\r\n"...)
 	}
 	if s.ConnectionInformation.Defined() {
-		b = appendAttribute(b, "c=", s.ConnectionInformation)
+		b = append(b, "c="...)
+		b = s.ConnectionInformation.AppendTo(b)
+		b = append(b, "\r\n"...)
 	}
 	for _, bw := range s.Bandwidth {
-		b = appendAttribute(b, "b=", bw)
+		b = append(b, "b="...)
+		b = bw.AppendTo(b)
+		b = append(b, "\r\n"...)
 	}
 	for _, td := range s.TimeDescriptions {
-		b = appendAttribute(b, "t=", td.Timing)
+		b = append(b, "t="...)
+		b = td.Timing.AppendTo(b)
+		b = append(b, "\r\n"...)
 		for _, r := range td.RepeatTimes {
-			b = appendAttribute(b, "r=", r)
+			b = append(b, "r="...)
+			b = r.AppendTo(b)
+			b = append(b, "\r\n"...)
 		}
 	}
 	if s.TimeZones.Defined() {
-		b = appendAttribute(b, "z=", s.TimeZones)
+		b = append(b, "z="...)
+		b = s.TimeZones.AppendTo(b)
+		b = append(b, "\r\n"...)
 	}
 	if s.EncryptionKey.Defined() {
-		b = appendAttribute(b, "k=", s.EncryptionKey)
+		b = append(b, "k="...)
+		b = s.EncryptionKey.AppendTo(b)
+		b = append(b, "\r\n"...)
 	}
 	for _, a := range s.Attributes {
-		b = appendAttribute(b, "a=", a)
+		b = append(b, "a="...)
+		b = a.AppendTo(b)
+		b = append(b, "\r\n"...)
 	}
 	for _, md := range s.MediaDescriptions {
-		b = appendAttribute(b, "m=", md.MediaName)
+		b = append(b, "m="...)
+		b = md.MediaName.AppendTo(b)
+		b = append(b, "\r\n"...)
 		if md.MediaTitle.Defined() {
-			b = appendAttribute(b, "i=", md.MediaTitle)
+			b = append(b, "i="...)
+			b = md.MediaTitle.AppendTo(b)
+			b = append(b, "\r\n"...)
 		}
 		if md.ConnectionInformation.Defined() {
-			b = appendAttribute(b, "c=", md.ConnectionInformation)
+			b = append(b, "c="...)
+			b = md.ConnectionInformation.AppendTo(b)
+			b = append(b, "\r\n"...)
 		}
 		for _, bw := range md.Bandwidth {
-			b = appendAttribute(b, "b=", bw)
+			b = append(b, "b="...)
+			b = bw.AppendTo(b)
+			b = append(b, "\r\n"...)
 		}
 		if md.EncryptionKey.Defined() {
-			b = appendAttribute(b, "k=", md.EncryptionKey)
+			b = append(b, "k="...)
+			b = md.EncryptionKey.AppendTo(b)
+			b = append(b, "\r\n"...)
 		}
 		for _, a := range md.Attributes {
-			b = appendAttribute(b, "a=", a)
+			b = append(b, "a="...)
+			b = a.AppendTo(b)
+			b = append(b, "\r\n"...)
 		}
 	}
-	return b
-}
-
-func appendAttribute(b []byte, name string, a interface{ AppendTo([]byte) []byte }) []byte {
-	b = append(b, name...)
-	b = a.AppendTo(b)
-	b = append(b, "\r\n"...)
 	return b
 }
 
