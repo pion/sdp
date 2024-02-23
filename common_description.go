@@ -16,11 +16,11 @@ func (t Information) Defined() bool {
 	return len(t) != 0
 }
 
-func (t Information) Len() int {
+func (t Information) ByteLen() int {
 	return len(t)
 }
 
-func (t Information) AppendTo(b []byte) []byte {
+func (t Information) MarshalAppend(b []byte) []byte {
 	return append(b, t...)
 }
 
@@ -31,11 +31,11 @@ func (t URI) Defined() bool {
 	return len(t) != 0
 }
 
-func (t URI) Len() int {
+func (t URI) ByteLen() int {
 	return len(t)
 }
 
-func (t URI) AppendTo(b []byte) []byte {
+func (t URI) MarshalAppend(b []byte) []byte {
 	return append(b, t...)
 }
 
@@ -55,22 +55,22 @@ func (t ConnectionInformation) Defined() bool {
 	return len(t.NetworkType) > 0
 }
 
-func (t ConnectionInformation) Len() int {
+func (t ConnectionInformation) ByteLen() int {
 	n := len(t.NetworkType) + len(t.AddressType) + 1
 	if t.Address.Defined() {
-		n += t.Address.Len() + 1
+		n += t.Address.ByteLen() + 1
 	}
 	return n
 }
 
-func (t ConnectionInformation) AppendTo(b []byte) []byte {
-	b = growByteSlice(b, t.Len())
+func (t ConnectionInformation) MarshalAppend(b []byte) []byte {
+	b = growByteSlice(b, t.ByteLen())
 	b = append(b, t.NetworkType...)
 	b = append(b, ' ')
 	b = append(b, t.AddressType...)
 	if t.Address.Defined() {
 		b = append(b, ' ')
-		b = t.Address.AppendTo(b)
+		b = t.Address.MarshalAppend(b)
 	}
 	return b
 }
@@ -86,7 +86,7 @@ func (t Address) Defined() bool {
 	return len(t.Address) != 0
 }
 
-func (t Address) Len() int {
+func (t Address) ByteLen() int {
 	n := len(t.Address)
 	if t.TTL != 0 {
 		n += uintLen(t.TTL) + 1
@@ -97,8 +97,8 @@ func (t Address) Len() int {
 	return n
 }
 
-func (t Address) AppendTo(b []byte) []byte {
-	b = growByteSlice(b, t.Len())
+func (t Address) MarshalAppend(b []byte) []byte {
+	b = growByteSlice(b, t.ByteLen())
 	b = append(b, t.Address...)
 	if t.TTL != 0 {
 		b = append(b, '/')
@@ -118,12 +118,12 @@ type Bandwidth struct {
 	Bandwidth uint64
 }
 
-func (t Bandwidth) Len() int {
+func (t Bandwidth) ByteLen() int {
 	return len(t.Type) + uintLen(t.Bandwidth) + 1
 }
 
-func (t Bandwidth) AppendTo(b []byte) []byte {
-	b = growByteSlice(b, t.Len())
+func (t Bandwidth) MarshalAppend(b []byte) []byte {
+	b = growByteSlice(b, t.ByteLen())
 	b = append(b, t.Type...)
 	b = append(b, ':')
 	b = strconv.AppendUint(b, t.Bandwidth, 10)
@@ -137,11 +137,11 @@ func (t EncryptionKey) Defined() bool {
 	return len(t) != 0
 }
 
-func (t EncryptionKey) Len() int {
+func (t EncryptionKey) ByteLen() int {
 	return len(t)
 }
 
-func (t EncryptionKey) AppendTo(b []byte) []byte {
+func (t EncryptionKey) MarshalAppend(b []byte) []byte {
 	return append(b, t...)
 }
 
@@ -167,7 +167,7 @@ func NewAttribute(key, value string) Attribute {
 	}
 }
 
-func (t Attribute) Len() int {
+func (t Attribute) ByteLen() int {
 	n := len(t.Key)
 	if t.Value != "" {
 		n += len(t.Value) + 1
@@ -175,8 +175,8 @@ func (t Attribute) Len() int {
 	return n
 }
 
-func (t Attribute) AppendTo(b []byte) []byte {
-	b = growByteSlice(b, t.Len())
+func (t Attribute) MarshalAppend(b []byte) []byte {
+	b = growByteSlice(b, t.ByteLen())
 	b = append(b, t.Key...)
 	if len(t.Value) > 0 {
 		b = append(b, ':')

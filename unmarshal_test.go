@@ -714,7 +714,7 @@ func TestRoundTrip(t *testing.T) {
 					strconv.Quote(test.SDP), strconv.Quote(got), strconv.Quote(want),
 				)
 			}
-			require.Equal(t, len(actual), sd.Len(), "marshal length mismatch")
+			require.Equal(t, len(actual), sd.ByteLen(), "marshal length mismatch")
 		})
 	}
 }

@@ -77,7 +77,7 @@ const (
 	unknown = iota
 )
 
-func (c Codec) Len() int {
+func (c Codec) ByteLen() int {
 	n := uintLen(uint64(c.PayloadType))
 	n += len(c.Name)
 	n += uintLen(uint64(c.ClockRate))
@@ -92,8 +92,8 @@ func (c Codec) Len() int {
 	return n + 9
 }
 
-func (c Codec) AppendTo(b []byte) []byte {
-	b = growByteSlice(b, c.Len())
+func (c Codec) MarshalAppend(b []byte) []byte {
+	b = growByteSlice(b, c.ByteLen())
 	b = strconv.AppendUint(b, uint64(c.PayloadType), 10)
 	b = append(b, ' ')
 	b = append(b, c.Name...)
@@ -115,7 +115,7 @@ func (c Codec) AppendTo(b []byte) []byte {
 }
 
 func (c Codec) String() string {
-	return string(c.AppendTo(nil))
+	return string(c.MarshalAppend(nil))
 }
 
 func parseRtpmap(rtpmap Attribute) (codec Codec, err error) {

@@ -56,7 +56,7 @@ type RangedPort struct {
 	Range uint16
 }
 
-func (p RangedPort) Len() int {
+func (p RangedPort) ByteLen() int {
 	n := uintLen(uint64(p.Value))
 	if p.Range != 0 {
 		n += uintLen(uint64(p.Range)) + 1
@@ -64,8 +64,8 @@ func (p RangedPort) Len() int {
 	return n
 }
 
-func (p RangedPort) AppendTo(b []byte) []byte {
-	b = growByteSlice(b, p.Len())
+func (p RangedPort) MarshalAppend(b []byte) []byte {
+	b = growByteSlice(b, p.ByteLen())
 	b = strconv.AppendUint(b, uint64(p.Value), 10)
 	if p.Range != 0 {
 		b = append(b, '/')
@@ -82,8 +82,8 @@ type MediaName struct {
 	Formats []string
 }
 
-func (m MediaName) Len() int {
-	n := len(m.Media) + m.Port.Len() + 1
+func (m MediaName) ByteLen() int {
+	n := len(m.Media) + m.Port.ByteLen() + 1
 	for i := range m.Protos {
 		n += len(m.Protos[i]) + 1
 	}
@@ -93,11 +93,11 @@ func (m MediaName) Len() int {
 	return n
 }
 
-func (m MediaName) AppendTo(b []byte) []byte {
-	b = growByteSlice(b, m.Len())
+func (m MediaName) MarshalAppend(b []byte) []byte {
+	b = growByteSlice(b, m.ByteLen())
 	b = append(b, m.Media...)
 	b = append(b, ' ')
-	b = m.Port.AppendTo(b)
+	b = m.Port.MarshalAppend(b)
 	for i := range m.Protos {
 		if i == 0 {
 			b = append(b, ' ')

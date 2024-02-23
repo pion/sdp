@@ -3,59 +3,59 @@
 
 package sdp
 
-func (s *SessionDescription) Len() int {
-	n := s.Version.Len() + 4
-	n += s.Origin.Len() + 4
-	n += s.SessionName.Len() + 4
+func (s *SessionDescription) ByteLen() int {
+	n := s.Version.ByteLen() + 4
+	n += s.Origin.ByteLen() + 4
+	n += s.SessionName.ByteLen() + 4
 	if s.SessionInformation.Defined() {
-		n += s.SessionInformation.Len() + 4
+		n += s.SessionInformation.ByteLen() + 4
 	}
 	if s.URI.Defined() {
-		n += s.URI.Len() + 4
+		n += s.URI.ByteLen() + 4
 	}
 	if s.EmailAddress.Defined() {
-		n += s.EmailAddress.Len() + 4
+		n += s.EmailAddress.ByteLen() + 4
 	}
 	if s.PhoneNumber.Defined() {
-		n += s.PhoneNumber.Len() + 4
+		n += s.PhoneNumber.ByteLen() + 4
 	}
 	if s.ConnectionInformation.Defined() {
-		n += s.ConnectionInformation.Len() + 4
+		n += s.ConnectionInformation.ByteLen() + 4
 	}
 	for _, bw := range s.Bandwidth {
-		n += bw.Len() + 4
+		n += bw.ByteLen() + 4
 	}
 	for _, td := range s.TimeDescriptions {
-		n += td.Timing.Len() + 4
+		n += td.Timing.ByteLen() + 4
 		for _, r := range td.RepeatTimes {
-			n += r.Len() + 4
+			n += r.ByteLen() + 4
 		}
 	}
 	if s.TimeZones.Defined() {
-		n += s.TimeZones.Len() + 4
+		n += s.TimeZones.ByteLen() + 4
 	}
 	if s.EncryptionKey.Defined() {
-		n += s.EncryptionKey.Len() + 4
+		n += s.EncryptionKey.ByteLen() + 4
 	}
 	for _, a := range s.Attributes {
-		n += a.Len() + 4
+		n += a.ByteLen() + 4
 	}
 	for _, md := range s.MediaDescriptions {
-		n += md.MediaName.Len() + 4
+		n += md.MediaName.ByteLen() + 4
 		if md.MediaTitle.Defined() {
-			n += md.MediaTitle.Len() + 4
+			n += md.MediaTitle.ByteLen() + 4
 		}
 		if md.ConnectionInformation.Defined() {
-			n += md.ConnectionInformation.Len() + 4
+			n += md.ConnectionInformation.ByteLen() + 4
 		}
 		for _, bw := range md.Bandwidth {
-			n += bw.Len() + 4
+			n += bw.ByteLen() + 4
 		}
 		if md.EncryptionKey.Defined() {
-			n += md.EncryptionKey.Len() + 4
+			n += md.EncryptionKey.ByteLen() + 4
 		}
 		for _, a := range md.Attributes {
-			n += a.Len() + 4
+			n += a.ByteLen() + 4
 		}
 	}
 	return n
@@ -96,102 +96,102 @@ func (s *SessionDescription) Len() int {
 //	k=* (encryption key)
 //	a=* (zero or more media attribute lines)
 func (s *SessionDescription) Marshal() ([]byte, error) {
-	return s.AppendTo(nil), nil
+	return s.MarshalAppend(nil), nil
 }
 
-func (s *SessionDescription) AppendTo(b []byte) []byte {
-	b = growByteSlice(b, s.Len())
+func (s *SessionDescription) MarshalAppend(b []byte) []byte {
+	b = growByteSlice(b, s.ByteLen())
 	b = append(b, "v="...)
-	b = s.Version.AppendTo(b)
+	b = s.Version.MarshalAppend(b)
 	b = append(b, "\r\n"...)
 	b = append(b, "o="...)
-	b = s.Origin.AppendTo(b)
+	b = s.Origin.MarshalAppend(b)
 	b = append(b, "\r\n"...)
 	b = append(b, "s="...)
-	b = s.SessionName.AppendTo(b)
+	b = s.SessionName.MarshalAppend(b)
 	b = append(b, "\r\n"...)
 	if s.SessionInformation.Defined() {
 		b = append(b, "i="...)
-		b = s.SessionInformation.AppendTo(b)
+		b = s.SessionInformation.MarshalAppend(b)
 		b = append(b, "\r\n"...)
 	}
 	if s.URI.Defined() {
 		b = append(b, "u="...)
-		b = s.URI.AppendTo(b)
+		b = s.URI.MarshalAppend(b)
 		b = append(b, "\r\n"...)
 	}
 	if s.EmailAddress.Defined() {
 		b = append(b, "e="...)
-		b = s.EmailAddress.AppendTo(b)
+		b = s.EmailAddress.MarshalAppend(b)
 		b = append(b, "\r\n"...)
 	}
 	if s.PhoneNumber.Defined() {
 		b = append(b, "p="...)
-		b = s.PhoneNumber.AppendTo(b)
+		b = s.PhoneNumber.MarshalAppend(b)
 		b = append(b, "\r\n"...)
 	}
 	if s.ConnectionInformation.Defined() {
 		b = append(b, "c="...)
-		b = s.ConnectionInformation.AppendTo(b)
+		b = s.ConnectionInformation.MarshalAppend(b)
 		b = append(b, "\r\n"...)
 	}
 	for _, bw := range s.Bandwidth {
 		b = append(b, "b="...)
-		b = bw.AppendTo(b)
+		b = bw.MarshalAppend(b)
 		b = append(b, "\r\n"...)
 	}
 	for _, td := range s.TimeDescriptions {
 		b = append(b, "t="...)
-		b = td.Timing.AppendTo(b)
+		b = td.Timing.MarshalAppend(b)
 		b = append(b, "\r\n"...)
 		for _, r := range td.RepeatTimes {
 			b = append(b, "r="...)
-			b = r.AppendTo(b)
+			b = r.MarshalAppend(b)
 			b = append(b, "\r\n"...)
 		}
 	}
 	if s.TimeZones.Defined() {
 		b = append(b, "z="...)
-		b = s.TimeZones.AppendTo(b)
+		b = s.TimeZones.MarshalAppend(b)
 		b = append(b, "\r\n"...)
 	}
 	if s.EncryptionKey.Defined() {
 		b = append(b, "k="...)
-		b = s.EncryptionKey.AppendTo(b)
+		b = s.EncryptionKey.MarshalAppend(b)
 		b = append(b, "\r\n"...)
 	}
 	for _, a := range s.Attributes {
 		b = append(b, "a="...)
-		b = a.AppendTo(b)
+		b = a.MarshalAppend(b)
 		b = append(b, "\r\n"...)
 	}
 	for _, md := range s.MediaDescriptions {
 		b = append(b, "m="...)
-		b = md.MediaName.AppendTo(b)
+		b = md.MediaName.MarshalAppend(b)
 		b = append(b, "\r\n"...)
 		if md.MediaTitle.Defined() {
 			b = append(b, "i="...)
-			b = md.MediaTitle.AppendTo(b)
+			b = md.MediaTitle.MarshalAppend(b)
 			b = append(b, "\r\n"...)
 		}
 		if md.ConnectionInformation.Defined() {
 			b = append(b, "c="...)
-			b = md.ConnectionInformation.AppendTo(b)
+			b = md.ConnectionInformation.MarshalAppend(b)
 			b = append(b, "\r\n"...)
 		}
 		for _, bw := range md.Bandwidth {
 			b = append(b, "b="...)
-			b = bw.AppendTo(b)
+			b = bw.MarshalAppend(b)
 			b = append(b, "\r\n"...)
 		}
 		if md.EncryptionKey.Defined() {
 			b = append(b, "k="...)
-			b = md.EncryptionKey.AppendTo(b)
+			b = md.EncryptionKey.MarshalAppend(b)
 			b = append(b, "\r\n"...)
 		}
 		for _, a := range md.Attributes {
 			b = append(b, "a="...)
-			b = a.AppendTo(b)
+			b = a.MarshalAppend(b)
 			b = append(b, "\r\n"...)
 		}
 	}

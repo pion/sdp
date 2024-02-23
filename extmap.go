@@ -33,7 +33,7 @@ type ExtMap struct {
 
 // Clone converts this object to an Attribute
 func (e ExtMap) Clone() Attribute {
-	return Attribute{Key: "extmap", Value: string(e.AppendTo(nil))}
+	return Attribute{Key: "extmap", Value: string(e.MarshalAppend(nil))}
 }
 
 // Unmarshal creates an Extmap from a string
@@ -74,14 +74,14 @@ func (e *ExtMap) Unmarshal(raw string) error {
 
 // Marshal creates a string from an ExtMap
 func (e ExtMap) Marshal() string {
-	b := make([]byte, 0, len("extmap")+1+e.Len())
+	b := make([]byte, 0, len("extmap")+1+e.ByteLen())
 	b = append(b, "extmap"...)
 	b = append(b, ':')
-	b = e.AppendTo(b)
+	b = e.MarshalAppend(b)
 	return string(b)
 }
 
-func (e ExtMap) Len() int {
+func (e ExtMap) ByteLen() int {
 	n := uintLen(uint64(e.Value))
 	if e.Direction != unknown {
 		n += len(e.Direction.String()) + 1
@@ -95,7 +95,7 @@ func (e ExtMap) Len() int {
 	return n
 }
 
-func (e ExtMap) AppendTo(b []byte) []byte {
+func (e ExtMap) MarshalAppend(b []byte) []byte {
 	b = strconv.AppendUint(b, uint64(e.Value), 10)
 	if e.Direction != unknown {
 		b = append(b, '/')

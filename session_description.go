@@ -82,11 +82,11 @@ func (s *SessionDescription) Attribute(key string) (string, bool) {
 // the version of the Session Description Protocol.
 type Version int
 
-func (v Version) Len() int {
+func (v Version) ByteLen() int {
 	return uintLen(uint64(v))
 }
 
-func (v Version) AppendTo(b []byte) []byte {
+func (v Version) MarshalAppend(b []byte) []byte {
 	return strconv.AppendUint(b, uint64(v), 10)
 }
 
@@ -105,7 +105,7 @@ type Origin struct {
 	UnicastAddress string
 }
 
-func (o Origin) Len() int {
+func (o Origin) ByteLen() int {
 	n := len(o.Username)
 	n += uintLen(o.SessionID) + 1
 	n += uintLen(o.SessionVersion) + 1
@@ -115,8 +115,8 @@ func (o Origin) Len() int {
 	return n
 }
 
-func (o Origin) AppendTo(b []byte) []byte {
-	b = growByteSlice(b, o.Len())
+func (o Origin) MarshalAppend(b []byte) []byte {
+	b = growByteSlice(b, o.ByteLen())
 	b = append(b, o.Username...)
 	b = append(b, ' ')
 	b = strconv.AppendUint(b, uint64(o.SessionID), 10)
@@ -132,7 +132,7 @@ func (o Origin) AppendTo(b []byte) []byte {
 }
 
 func (o Origin) String() string {
-	return string(o.AppendTo(nil))
+	return string(o.MarshalAppend(nil))
 }
 
 // SessionName describes a structured representations for the "s=" field
@@ -143,11 +143,11 @@ func (s SessionName) Defined() bool {
 	return len(s) != 0
 }
 
-func (s SessionName) Len() int {
+func (s SessionName) ByteLen() int {
 	return len(s)
 }
 
-func (s SessionName) AppendTo(b []byte) []byte {
+func (s SessionName) MarshalAppend(b []byte) []byte {
 	return append(b, s...)
 }
 
@@ -164,11 +164,11 @@ func (e EmailAddress) Defined() bool {
 	return len(e) != 0
 }
 
-func (e EmailAddress) Len() int {
+func (e EmailAddress) ByteLen() int {
 	return len(e)
 }
 
-func (e EmailAddress) AppendTo(b []byte) []byte {
+func (e EmailAddress) MarshalAppend(b []byte) []byte {
 	return append(b, e...)
 }
 
@@ -185,11 +185,11 @@ func (p PhoneNumber) Defined() bool {
 	return len(p) != 0
 }
 
-func (p PhoneNumber) Len() int {
+func (p PhoneNumber) ByteLen() int {
 	return len(p)
 }
 
-func (p PhoneNumber) AppendTo(b []byte) []byte {
+func (p PhoneNumber) MarshalAppend(b []byte) []byte {
 	return append(b, p...)
 }
 
@@ -203,23 +203,23 @@ func (s TimeZoneSet) Defined() bool {
 	return len(s) != 0
 }
 
-func (s TimeZoneSet) Len() (n int) {
+func (s TimeZoneSet) ByteLen() (n int) {
 	for i, z := range s {
 		if i > 0 {
 			n++
 		}
-		n += z.Len()
+		n += z.ByteLen()
 	}
 	return n
 }
 
-func (s TimeZoneSet) AppendTo(b []byte) []byte {
-	b = growByteSlice(b, s.Len())
+func (s TimeZoneSet) MarshalAppend(b []byte) []byte {
+	b = growByteSlice(b, s.ByteLen())
 	for i, z := range s {
 		if i > 0 {
 			b = append(b, ' ')
 		}
-		b = z.AppendTo(b)
+		b = z.MarshalAppend(b)
 	}
 	return b
 }
@@ -231,7 +231,7 @@ type TimeZone struct {
 	Offset         int64
 }
 
-func (z TimeZone) Len() int {
+func (z TimeZone) ByteLen() int {
 	n := uintLen(z.AdjustmentTime) + 1
 	if z.Offset < 0 {
 		n += uintLen(uint64(-z.Offset)) + 1
@@ -241,8 +241,8 @@ func (z TimeZone) Len() int {
 	return n
 }
 
-func (z TimeZone) AppendTo(b []byte) []byte {
-	b = growByteSlice(b, z.Len())
+func (z TimeZone) MarshalAppend(b []byte) []byte {
+	b = growByteSlice(b, z.ByteLen())
 	b = strconv.AppendUint(b, z.AdjustmentTime, 10)
 	b = append(b, ' ')
 	b = strconv.AppendInt(b, z.Offset, 10)
