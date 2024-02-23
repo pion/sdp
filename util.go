@@ -252,8 +252,8 @@ func equivalentFmtp(want, got string) bool {
 		return false
 	}
 
-	sort.Slice(wantSplit, func(i, j int) bool { return strings.Compare(wantSplit[i], wantSplit[j]) == -1 })
-	sort.Slice(gotSplit, func(i, j int) bool { return strings.Compare(gotSplit[i], gotSplit[j]) == -1 })
+	sort.Strings(wantSplit)
+	sort.Strings(gotSplit)
 
 	for i, wantPart := range wantSplit {
 		wantPart = strings.TrimSpace(wantPart)
