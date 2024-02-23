@@ -45,5 +45,5 @@ func TestTransportCCExtMap(t *testing.T) {
 		URI:   "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01",
 	}
 
-	require.EqualValues(t, e.Marshal(), "3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01")
+	require.EqualValues(t, e.Marshal(), "extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01")
 }
