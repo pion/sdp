@@ -1,4 +1,4 @@
-module github.com/pion/sdp/v3
+module github.com/pion/sdp/v4
 
 go 1.13
 
