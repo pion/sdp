@@ -52,7 +52,7 @@ type ConnectionInformation struct {
 }
 
 func (t ConnectionInformation) Defined() bool {
-	return len(t.NetworkType) > 0
+	return len(t.NetworkType) != 0
 }
 
 func (t ConnectionInformation) ByteLen() int {
