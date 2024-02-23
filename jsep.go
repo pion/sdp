@@ -47,7 +47,7 @@ const (
 )
 
 var (
-	ExtMapValueTransportCCURI = "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"
+	ExtMapValueTransportCCURI URI = "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"
 )
 
 // API to match draft-ietf-rtcweb-jsep
@@ -68,14 +68,14 @@ func NewJSEPSessionDescription(identity bool) (*SessionDescription, error) {
 	d := &SessionDescription{
 		Version: 0,
 		Origin: Origin{
-			Username:       kDash,
+			Username:       "-",
 			SessionID:      sid,
 			SessionVersion: uint64(time.Now().Unix()),
-			NetworkType:    kIn,
-			AddressType:    kIp4,
-			UnicastAddress: kUnroutableAddr,
+			NetworkType:    "-",
+			AddressType:    "IP4",
+			UnicastAddress: "0.0.0.0",
 		},
-		SessionName: SessionName(kDash),
+		SessionName: SessionName("-"),
 		TimeDescriptions: []TimeDescription{
 			{
 				Timing: Timing{
@@ -91,7 +91,7 @@ func NewJSEPSessionDescription(identity bool) (*SessionDescription, error) {
 	}
 
 	if identity {
-		d.WithPropertyAttribute(kIdenity)
+		d.WithPropertyAttribute("identity")
 	}
 
 	return d, nil
@@ -111,7 +111,7 @@ func (s *SessionDescription) WithValueAttribute(key, value string) *SessionDescr
 
 // WithFingerprint adds a fingerprint to the session description
 func (s *SessionDescription) WithFingerprint(algorithm, value string) *SessionDescription {
-	return s.WithValueAttribute(kFingerprint, strings.Join([]string{algorithm, value}, kSpace))
+	return s.WithValueAttribute("fingerprint", strings.Join([]string{algorithm, value}, " "))
 }
 
 // WithMedia adds a media description to the session description
@@ -127,13 +127,13 @@ func NewJSEPMediaDescription(codecType string, _ []string) MediaDescription {
 		MediaName: MediaName{
 			Media:  codecType,
 			Port:   RangedPort{Value: 9},
-			Protos: []string{kUdp, kTls, kRtp, kSavp},
+			Protos: []string{"UDP", "TLS", "RTP", "SAVP"},
 		},
 		ConnectionInformation: ConnectionInformation{
-			NetworkType: kIn,
-			AddressType: kIp4,
+			NetworkType: "-",
+			AddressType: "IP4",
 			Address: Address{
-				Address: kUnroutableAddr,
+				Address: "0.0.0.0",
 			},
 		},
 	}
@@ -153,14 +153,14 @@ func (d *MediaDescription) WithValueAttribute(key, value string) *MediaDescripti
 
 // WithFingerprint adds a fingerprint to the media description
 func (d *MediaDescription) WithFingerprint(algorithm, value string) *MediaDescription {
-	return d.WithValueAttribute(kFingerprint, strings.Join([]string{algorithm, value}, kSpace))
+	return d.WithValueAttribute("fingerprint", strings.Join([]string{algorithm, value}, " "))
 }
 
 // WithICECredentials adds ICE credentials to the media description
 func (d *MediaDescription) WithICECredentials(username, password string) *MediaDescription {
 	return d.
-		WithValueAttribute(kIceUfrag, username).
-		WithValueAttribute(kIcePwd, password)
+		WithValueAttribute("ice-ufrag", username).
+		WithValueAttribute("ice-pwd", password)
 }
 
 // WithCodec adds codec information to the media description
@@ -171,9 +171,9 @@ func (d *MediaDescription) WithCodec(payloadType uint8, name string, clockrate u
 		rtpmap += fmt.Sprintf("/%d", channels)
 	}
 	// TODO
-	d.WithValueAttribute(kRtpmap, rtpmap)
+	d.WithValueAttribute("rtpmap", rtpmap)
 	if fmtp != "" {
-		d.WithValueAttribute(kFmtp, fmt.Sprintf("%d %s", payloadType, fmtp))
+		d.WithValueAttribute("fmtp", fmt.Sprintf("%d %s", payloadType, fmtp))
 	}
 	return d
 }
@@ -181,16 +181,16 @@ func (d *MediaDescription) WithCodec(payloadType uint8, name string, clockrate u
 // WithMediaSource adds media source information to the media description
 func (d *MediaDescription) WithMediaSource(ssrc uint32, cname, streamLabel, label string) *MediaDescription {
 	return d.
-		WithValueAttribute(kSsrc, fmt.Sprintf("%d cname:%s", ssrc, cname)). // Deprecated but not phased out?
-		WithValueAttribute(kSsrc, fmt.Sprintf("%d msid:%s %s", ssrc, streamLabel, label)).
-		WithValueAttribute(kSsrc, fmt.Sprintf("%d mslabel:%s", ssrc, streamLabel)). // Deprecated but not phased out?
-		WithValueAttribute(kSsrc, fmt.Sprintf("%d label:%s", ssrc, label))          // Deprecated but not phased out?
+		WithValueAttribute("ssrc", fmt.Sprintf("%d cname:%s", ssrc, cname)). // Deprecated but not phased out?
+		WithValueAttribute("ssrc", fmt.Sprintf("%d msid:%s %s", ssrc, streamLabel, label)).
+		WithValueAttribute("ssrc", fmt.Sprintf("%d mslabel:%s", ssrc, streamLabel)). // Deprecated but not phased out?
+		WithValueAttribute("ssrc", fmt.Sprintf("%d label:%s", ssrc, label))          // Deprecated but not phased out?
 }
 
 // WithCandidate adds an ICE candidate to the media description
 // Deprecated: use WithICECandidate instead
 func (d *MediaDescription) WithCandidate(value string) *MediaDescription {
-	return d.WithValueAttribute(kCandidate, value)
+	return d.WithValueAttribute("candidate", value)
 }
 
 // WithExtMap adds an extmap to the media description

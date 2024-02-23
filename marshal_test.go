@@ -63,9 +63,8 @@ func TestMarshalCanonical(t *testing.T) {
 		},
 		Bandwidth: []Bandwidth{
 			{
-				Experimental: true,
-				Type:         "YZ",
-				Bandwidth:    128,
+				Type:      "X-YZ",
+				Bandwidth: 128,
 			},
 			{
 				Type:      "AS",
@@ -129,9 +128,8 @@ func TestMarshalCanonical(t *testing.T) {
 				},
 				Bandwidth: []Bandwidth{
 					{
-						Experimental: true,
-						Type:         "YZ",
-						Bandwidth:    128,
+						Type:      "X-YZ",
+						Bandwidth: 128,
 					},
 				},
 				EncryptionKey: EncryptionKey("prompt"),
@@ -165,7 +163,7 @@ func TestMarshalCanonical(t *testing.T) {
 func BenchmarkMarshal(b *testing.B) {
 	b.ReportAllocs()
 	var sd SessionDescription
-	err := sd.Unmarshal(BigSDP)
+	err := sd.Unmarshal(CanonicalMarshalSDP)
 	if err != nil {
 		b.Fatal(err)
 	}

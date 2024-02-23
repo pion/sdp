@@ -26,19 +26,19 @@ const (
 // ExtMap represents the activation of a single RTP header extension
 type ExtMap struct {
 	Value     int
-	Direction string
-	URI       string
+	Direction Direction
+	URI       URI
 	ExtAttr   string
 }
 
 // Clone converts this object to an Attribute
 func (e ExtMap) Clone() Attribute {
-	return Attribute{Key: kExtmap, Value: string(e.AppendTo(nil))}
+	return Attribute{Key: "extmap", Value: string(e.AppendTo(nil))}
 }
 
 // Unmarshal creates an Extmap from a string
-func (e ExtMap) Unmarshal(raw string) error {
-	parts := strings.SplitN(raw, kColon, 2)
+func (e *ExtMap) Unmarshal(raw string) error {
+	parts := strings.SplitN(raw, ":", 2)
 	if len(parts) != 2 {
 		return fmt.Errorf("%w: %v", errSyntaxError, raw)
 	}
@@ -48,14 +48,18 @@ func (e ExtMap) Unmarshal(raw string) error {
 		return fmt.Errorf("%w: %v", errSyntaxError, raw)
 	}
 
-	valdir := strings.Split(fields[0], kSlash)
-	value, ok := parseUint(valdir[0], 8)
-	if !ok || value == 0 {
+	valdir := strings.Split(fields[0], "/")
+	value, _, err := parseUint8(valdir[0])
+	if err != nil || value == 0 {
 		return fmt.Errorf("%w: %v", errSyntaxError, valdir[0])
 	}
 
-	if !anyOf(valdir[1], kSendRecv, kSendOnly, kRecvOnly, kInactive) {
-		return fmt.Errorf("%w: %v", errDirectionString, valdir[1])
+	var direction Direction
+	if len(valdir) == 2 {
+		direction, err = NewDirection(valdir[1])
+		if err != nil {
+			return err
+		}
 	}
 
 	if len(fields) == 3 {
@@ -63,24 +67,24 @@ func (e ExtMap) Unmarshal(raw string) error {
 	}
 
 	e.Value = int(value)
-	e.Direction = valdir[1]
-	e.URI = fields[1]
+	e.Direction = direction
+	e.URI = URI(fields[1])
 	return nil
 }
 
 // Marshal creates a string from an ExtMap
-func (e ExtMap) Marshal() []byte {
-	b := make([]byte, 0, len(kExtmap)+1+e.Len())
-	b = append(b, kExtmap...)
+func (e ExtMap) Marshal() string {
+	b := make([]byte, 0, len("extmap")+1+e.Len())
+	b = append(b, "extmap"...)
 	b = append(b, ':')
 	b = e.AppendTo(b)
-	return b
+	return string(b)
 }
 
 func (e ExtMap) Len() int {
 	n := uintLen(uint64(e.Value))
-	if len(e.Direction) != 0 {
-		n += len(e.Direction) + 1
+	if e.Direction != unknown {
+		n += len(e.Direction.String()) + 1
 	}
 	if len(e.URI) != 0 {
 		n += len(e.URI) + 1
@@ -93,9 +97,9 @@ func (e ExtMap) Len() int {
 
 func (e ExtMap) AppendTo(b []byte) []byte {
 	b = strconv.AppendUint(b, uint64(e.Value), 10)
-	if len(e.Direction) != 0 {
+	if e.Direction != unknown {
 		b = append(b, '/')
-		b = append(b, e.Direction...)
+		b = append(b, e.Direction.String()...)
 	}
 	if len(e.URI) != 0 {
 		b = append(b, ' ')
@@ -106,4 +110,9 @@ func (e ExtMap) AppendTo(b []byte) []byte {
 		b = append(b, e.ExtAttr...)
 	}
 	return b
+}
+
+// Name returns the constant name of this object
+func (e ExtMap) Name() string {
+	return "extmap"
 }

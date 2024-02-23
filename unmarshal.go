@@ -4,16 +4,8 @@
 package sdp
 
 import (
-	"errors"
 	"fmt"
-	"strings"
-)
-
-var (
-	errSDPInvalidSyntax       = errors.New("sdp: invalid syntax")
-	errSDPInvalidNumericValue = errors.New("sdp: invalid numeric value")
-	errSDPInvalidValue        = errors.New("sdp: invalid value")
-	errSDPInvalidPortValue    = errors.New("sdp: invalid port value")
+	"sync"
 )
 
 // Unmarshal is the primary function that deserializes the session description
@@ -60,910 +52,715 @@ var (
 //	b=* (zero or more bandwidth information lines)
 //	k=* (encryption key)
 //	a=* (zero or more media attribute lines)
-//
-// In order to generate the following state table and draw subsequent
-// deterministic finite-state automota ("DFA") the following regex was used to
-// derive the DFA:
-//
-//	vosi?u?e?p?c?b*(tr*)+z?k?a*(mi?c?b*k?a*)*
-//
-// possible place and state to exit:
-//
-//	**   * * *  ** * * * *
-//	99   1 1 1  11 1 1 1 1
-//	     3 1 1  26 5 5 4 4
-//
-// Please pay close attention to the `k`, and `a` parsing states. In the table
-// below in order to distinguish between the states belonging to the media
-// description as opposed to the session description, the states are marked
-// with an asterisk ("a*", "k*").
-// +--------+----+-------+----+-----+----+-----+---+----+----+---+---+-----+---+---+----+---+----+
-// | STATES | a* | a*,k* | a  | a,k | b  | b,c | e | i  | m  | o | p | r,t | s | t | u  | v | z  |
-// +--------+----+-------+----+-----+----+-----+---+----+----+---+---+-----+---+---+----+---+----+
-// |   s1   |    |       |    |     |    |     |   |    |    |   |   |     |   |   |    | 2 |    |
-// |   s2   |    |       |    |     |    |     |   |    |    | 3 |   |     |   |   |    |   |    |
-// |   s3   |    |       |    |     |    |     |   |    |    |   |   |     | 4 |   |    |   |    |
-// |   s4   |    |       |    |     |    |   5 | 6 |  7 |    |   | 8 |     |   | 9 | 10 |   |    |
-// |   s5   |    |       |    |     |  5 |     |   |    |    |   |   |     |   | 9 |    |   |    |
-// |   s6   |    |       |    |     |    |   5 |   |    |    |   | 8 |     |   | 9 |    |   |    |
-// |   s7   |    |       |    |     |    |   5 | 6 |    |    |   | 8 |     |   | 9 | 10 |   |    |
-// |   s8   |    |       |    |     |    |   5 |   |    |    |   |   |     |   | 9 |    |   |    |
-// |   s9   |    |       |    |  11 |    |     |   |    | 12 |   |   |   9 |   |   |    |   | 13 |
-// |   s10  |    |       |    |     |    |   5 | 6 |    |    |   | 8 |     |   | 9 |    |   |    |
-// |   s11  |    |       | 11 |     |    |     |   |    | 12 |   |   |     |   |   |    |   |    |
-// |   s12  |    |    14 |    |     |    |  15 |   | 16 | 12 |   |   |     |   |   |    |   |    |
-// |   s13  |    |       |    |  11 |    |     |   |    | 12 |   |   |     |   |   |    |   |    |
-// |   s14  | 14 |       |    |     |    |     |   |    | 12 |   |   |     |   |   |    |   |    |
-// |   s15  |    |    14 |    |     | 15 |     |   |    | 12 |   |   |     |   |   |    |   |    |
-// |   s16  |    |    14 |    |     |    |  15 |   |    | 12 |   |   |     |   |   |    |   |    |
-// +--------+----+-------+----+-----+----+-----+---+----+----+---+---+-----+---+---+----+---+----+
-func (s *SessionDescription) Unmarshal(value string) error {
-	l := new(lexer)
-	l.desc = s
-	l.value = value
+func (s *SessionDescription) Unmarshal(value string) (err error) {
+	c := cachePool.Get().(*cache)
+	*s, err = parseDescription(value, c)
+	cachePool.Put(c)
+	return
+}
 
-	// stats := struct{ b, t, a, m int }{}
-	// for {
-	// 	name, err := l.readFieldName()
-	// 	if err != nil {
-	// 		break
-	// 	}
-	// 	switch name {
-	// 	case 'b':
-	// 		stats.b++
-	// 	case 't':
-	// 		stats.t++
-	// 	case 'a':
-	// 		stats.a++
-	// 	case 'm':
-	// 		stats.m++
-	// 	}
-	// 	if _, err := l.readLine(); err != nil {
-	// 		break
-	// 	}
-	// }
+var cachePool = sync.Pool{
+	New: func() interface{} {
+		return &cache{}
+	},
+}
 
-	// l.reset()
+type cache struct {
+	ss []string
+	b  []Bandwidth
+	t  []TimeDescription
+	rt []RepeatTime
+	a  []Attribute
+	m  []MediaDescription
+}
 
-	// s.Bandwidth = make([]Bandwidth, 0, stats.b)
-	// s.TimeDescriptions = make([]TimeDescription, 0, stats.t)
-	// l.attrs = make([]Attribute, 0, stats.a)
-	// // s.Attributes = make([]Attribute, 0, stats.a)
-	// s.MediaDescriptions = make([]MediaDescription, 0, stats.m)
+func (c *cache) reset() {
+	c.ss = c.ss[:0]
+	c.b = c.b[:0]
+	c.t = c.t[:0]
+	c.rt = c.rt[:0]
+	c.a = c.a[:0]
+	c.m = c.m[:0]
+}
 
-	for state := s1; state != nil; {
-		var err error
-		state, err = state(l)
+func (c *cache) cloneBandwidth() []Bandwidth {
+	if len(c.b) == 0 {
+		return nil
+	}
+	s := make([]Bandwidth, len(c.b))
+	copy(s, c.b)
+	c.b = c.b[:0]
+	return s
+}
+
+func (c *cache) getBandwidth() *Bandwidth {
+	c.b = append(c.b, Bandwidth{})
+	return &c.b[len(c.b)-1]
+}
+
+func (c *cache) cloneTimeDescription() []TimeDescription {
+	if len(c.t) == 0 {
+		return nil
+	}
+	s := make([]TimeDescription, len(c.t))
+	copy(s, c.t)
+	c.t = c.t[:0]
+	return s
+}
+
+func (c *cache) getTimeDescription() *TimeDescription {
+	c.t = append(c.t, TimeDescription{})
+	return &c.t[len(c.t)-1]
+}
+
+func (c *cache) cloneRepeatTime() []RepeatTime {
+	if len(c.rt) == 0 {
+		return nil
+	}
+	s := make([]RepeatTime, len(c.rt))
+	copy(s, c.rt)
+	c.rt = c.rt[:0]
+	return s
+}
+
+func (c *cache) getRepeatTime() *RepeatTime {
+	c.rt = append(c.rt, RepeatTime{})
+	return &c.rt[len(c.rt)-1]
+}
+
+func (c *cache) cloneAttribute() []Attribute {
+	if len(c.a) == 0 {
+		return nil
+	}
+	s := make([]Attribute, len(c.a))
+	copy(s, c.a)
+	c.a = c.a[:0]
+	return s
+}
+
+func (c *cache) getAttribute() *Attribute {
+	c.a = append(c.a, Attribute{})
+	return &c.a[len(c.a)-1]
+}
+
+func (c *cache) cloneMediaDescription() []MediaDescription {
+	if len(c.m) == 0 {
+		return nil
+	}
+	s := make([]MediaDescription, len(c.m))
+	copy(s, c.m)
+	c.m = c.m[:0]
+	return s
+}
+
+func (c *cache) getMediaDescription() *MediaDescription {
+	c.m = append(c.m, MediaDescription{})
+	return &c.m[len(c.m)-1]
+}
+
+func parseDescription(s string, c *cache) (d SessionDescription, err error) {
+	c.reset()
+
+	if len(s) == 0 || s[0] != 'v' {
+		return d, fmt.Errorf("expected version found: %q", s)
+	}
+	s, err = parseVersion(&d.Version, s[1:])
+	if err != nil {
+		return d, err
+	}
+
+	if len(s) == 0 || s[0] != 'o' {
+		return d, fmt.Errorf("expected origin found: %q", s)
+	}
+	s, err = parseOrigin(&d.Origin, s[1:])
+	if err != nil {
+		return d, err
+	}
+
+	if len(s) == 0 || s[0] != 's' {
+		return d, fmt.Errorf("expected origin found: %q", s)
+	}
+	s, err = parseStringField((*string)(&d.SessionName), s[1:])
+	if err != nil {
+		return d, err
+	}
+
+	if len(s) != 0 && s[0] == 'i' {
+		s, err = parseStringField((*string)(&d.SessionInformation), s[1:])
 		if err != nil {
-			return err
+			return d, fmt.Errorf("cannot parse session information: %s", err)
 		}
 	}
-	return nil
-}
-
-func s1(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		if name == 'v' {
-			return unmarshalProtocolVersion
-		}
-		return nil
-	})
-}
-
-func s2(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		if name == 'o' {
-			return unmarshalOrigin
-		}
-		return nil
-	})
-}
-
-func s3(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		if name == 's' {
-			return unmarshalSessionName
-		}
-		return nil
-	})
-}
-
-func s4(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		switch name {
-		case 'i':
-			return unmarshalSessionInformation
-		case 'u':
-			return unmarshalURI
-		case 'e':
-			return unmarshalEmail
-		case 'p':
-			return unmarshalPhone
-		case 'c':
-			return unmarshalSessionConnectionInformation
-		case 'b':
-			return unmarshalSessionBandwidth
-		case 't':
-			return unmarshalTiming
-		}
-		return nil
-	})
-}
-
-func s5(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		switch name {
-		case 'b':
-			return unmarshalSessionBandwidth
-		case 't':
-			return unmarshalTiming
-		}
-		return nil
-	})
-}
-
-func s6(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		switch name {
-		case 'p':
-			return unmarshalPhone
-		case 'c':
-			return unmarshalSessionConnectionInformation
-		case 'b':
-			return unmarshalSessionBandwidth
-		case 't':
-			return unmarshalTiming
-		}
-		return nil
-	})
-}
-
-func s7(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		switch name {
-		case 'u':
-			return unmarshalURI
-		case 'e':
-			return unmarshalEmail
-		case 'p':
-			return unmarshalPhone
-		case 'c':
-			return unmarshalSessionConnectionInformation
-		case 'b':
-			return unmarshalSessionBandwidth
-		case 't':
-			return unmarshalTiming
-		}
-		return nil
-	})
-}
-
-func s8(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		switch name {
-		case 'c':
-			return unmarshalSessionConnectionInformation
-		case 'b':
-			return unmarshalSessionBandwidth
-		case 't':
-			return unmarshalTiming
-		}
-		return nil
-	})
-}
-
-func s9(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		switch name {
-		case 'z':
-			return unmarshalTimeZones
-		case 'k':
-			return unmarshalSessionEncryptionKey
-		case 'a':
-			return unmarshalSessionAttribute
-		case 'r':
-			return unmarshalRepeatTimes
-		case 't':
-			return unmarshalTiming
-		case 'm':
-			return unmarshalMediaDescription
-		}
-		return nil
-	})
-}
-
-func s10(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		switch name {
-		case 'e':
-			return unmarshalEmail
-		case 'p':
-			return unmarshalPhone
-		case 'c':
-			return unmarshalSessionConnectionInformation
-		case 'b':
-			return unmarshalSessionBandwidth
-		case 't':
-			return unmarshalTiming
-		}
-		return nil
-	})
-}
-
-func s11(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		switch name {
-		case 'a':
-			return unmarshalSessionAttribute
-		case 'm':
-			return unmarshalMediaDescription
-		}
-		return nil
-	})
-}
-
-func s12(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		switch name {
-		case 'a':
-			return unmarshalMediaAttribute
-		case 'k':
-			return unmarshalMediaEncryptionKey
-		case 'b':
-			return unmarshalMediaBandwidth
-		case 'c':
-			return unmarshalMediaConnectionInformation
-		case 'i':
-			return unmarshalMediaTitle
-		case 'm':
-			return unmarshalMediaDescription
-		}
-		return nil
-	})
-}
-
-func s13(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		switch name {
-		case 'a':
-			return unmarshalSessionAttribute
-		case 'k':
-			return unmarshalSessionEncryptionKey
-		case 'm':
-			return unmarshalMediaDescription
-		}
-		return nil
-	})
-}
-
-func s14(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		switch name {
-		case 'a':
-			return unmarshalMediaAttribute
-		case 'k':
-			// Non-spec ordering
-			return unmarshalMediaEncryptionKey
-		case 'b':
-			// Non-spec ordering
-			return unmarshalMediaBandwidth
-		case 'c':
-			// Non-spec ordering
-			return unmarshalMediaConnectionInformation
-		case 'i':
-			// Non-spec ordering
-			return unmarshalMediaTitle
-		case 'm':
-			return unmarshalMediaDescription
-		}
-		return nil
-	})
-}
-
-func s15(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		switch name {
-		case 'a':
-			return unmarshalMediaAttribute
-		case 'k':
-			return unmarshalMediaEncryptionKey
-		case 'b':
-			return unmarshalMediaBandwidth
-		case 'c':
-			return unmarshalMediaConnectionInformation
-		case 'i':
-			// Non-spec ordering
-			return unmarshalMediaTitle
-		case 'm':
-			return unmarshalMediaDescription
-		}
-		return nil
-	})
-}
-
-func s16(l *lexer) (stateFn, error) {
-	return l.handleType(func(name attrName) stateFn {
-		switch name {
-		case 'a':
-			return unmarshalMediaAttribute
-		case 'k':
-			return unmarshalMediaEncryptionKey
-		case 'c':
-			return unmarshalMediaConnectionInformation
-		case 'b':
-			return unmarshalMediaBandwidth
-		case 'i':
-			// Non-spec ordering
-			return unmarshalMediaTitle
-		case 'm':
-			return unmarshalMediaDescription
-		}
-		return nil
-	})
-}
-
-func unmarshalProtocolVersion(l *lexer) (stateFn, error) {
-	version, err := l.readUint64Field()
-	if err != nil {
-		return nil, err
-	}
-
-	// As off the latest draft of the rfc this value is required to be 0.
-	// https://tools.ietf.org/html/draft-ietf-rtcweb-jsep-24#section-5.8.1
-	if version != 0 {
-		return nil, fmt.Errorf("%w `%d`", errSDPInvalidValue, version)
-	}
-
-	if err := l.nextLine(); err != nil {
-		return nil, err
-	}
-
-	return s2, nil
-}
-
-func unmarshalOrigin(l *lexer) (stateFn, error) {
-	var err error
-
-	l.desc.Origin.Username, err = l.readField()
-	if err != nil {
-		return nil, err
-	}
-
-	l.desc.Origin.SessionID, err = l.readUint64Field()
-	if err != nil {
-		return nil, err
-	}
-
-	l.desc.Origin.SessionVersion, err = l.readUint64Field()
-	if err != nil {
-		return nil, err
-	}
-
-	l.desc.Origin.NetworkType, err = l.readField()
-	if err != nil {
-		return nil, err
-	}
-
-	// Set according to currently registered with IANA
-	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if !anyOf(l.desc.Origin.NetworkType, kIn) {
-		return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, l.desc.Origin.NetworkType)
-	}
-
-	l.desc.Origin.AddressType, err = l.readField()
-	if err != nil {
-		return nil, err
-	}
-
-	// Set according to currently registered with IANA
-	// https://tools.ietf.org/html/rfc4566#section-8.2.7
-	if !anyOf(l.desc.Origin.AddressType, kIp4, kIp6) {
-		return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, l.desc.Origin.AddressType)
-	}
-
-	l.desc.Origin.UnicastAddress, err = l.readField()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := l.nextLine(); err != nil {
-		return nil, err
-	}
-
-	return s3, nil
-}
-
-func unmarshalSessionName(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
-	if err != nil {
-		return nil, err
-	}
-
-	l.desc.SessionName = SessionName(value)
-	return s4, nil
-}
-
-func unmarshalSessionInformation(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
-	if err != nil {
-		return nil, err
-	}
-
-	l.desc.SessionInformation = Information(value)
-	return s7, nil
-}
-
-func unmarshalURI(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
-	if err != nil {
-		return nil, err
-	}
-
-	l.desc.URI = URI(value)
-
-	return s10, nil
-}
-
-func unmarshalEmail(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
-	if err != nil {
-		return nil, err
-	}
-
-	l.desc.EmailAddress = EmailAddress(value)
-	return s6, nil
-}
-
-func unmarshalPhone(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
-	if err != nil {
-		return nil, err
-	}
-
-	l.desc.PhoneNumber = PhoneNumber(value)
-	return s8, nil
-}
-
-func unmarshalSessionConnectionInformation(l *lexer) (stateFn, error) {
-	var err error
-	l.desc.ConnectionInformation, err = l.unmarshalConnectionInformation()
-	if err != nil {
-		return nil, err
-	}
-	return s5, nil
-}
-
-func (l *lexer) unmarshalConnectionInformation() (c ConnectionInformation, err error) {
-	c.NetworkType, err = l.readField()
-	if err != nil {
-		return c, err
-	}
-
-	// Set according to currently registered with IANA
-	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if !anyOf(c.NetworkType, kIn) {
-		return c, fmt.Errorf("%w `%s`", errSDPInvalidValue, c.NetworkType)
-	}
-
-	c.AddressType, err = l.readField()
-	if err != nil {
-		return c, err
-	}
-
-	// Set according to currently registered with IANA
-	// https://tools.ietf.org/html/rfc4566#section-8.2.7
-	if !anyOf(c.AddressType, kIp4, kIp6) {
-		return c, fmt.Errorf("%w `%s`", errSDPInvalidValue, c.AddressType)
-	}
-
-	address, err := l.readField()
-	if err != nil {
-		return c, err
-	}
-
-	c.Address.Address = address
-
-	if err := l.nextLine(); err != nil {
-		return c, err
-	}
-
-	return c, nil
-}
-
-func unmarshalSessionBandwidth(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
-	if err != nil {
-		return nil, err
-	}
-
-	bandwidth, err := unmarshalBandwidth(value)
-	if err != nil {
-		return nil, fmt.Errorf("%w `b=%v`", errSDPInvalidValue, value)
-	}
-	l.desc.Bandwidth = append(l.desc.Bandwidth, *bandwidth)
-
-	return s5, nil
-}
-
-func unmarshalBandwidth(value string) (*Bandwidth, error) {
-	i := strings.IndexRune(value, ':')
-	if i == -1 {
-		return nil, fmt.Errorf("%w `b=%v`", errSDPInvalidValue, value)
-	}
-
-	typ := value[:i]
-	experimental := strings.HasPrefix(typ, kExperimental)
-	if experimental {
-		typ = strings.TrimPrefix(typ, kExperimental)
-	} else if !anyOf(typ, kCt, kAs, kTias, kRs, kRr) {
-		// Set according to currently registered with IANA
-		// https://tools.ietf.org/html/rfc4566#section-5.8
-		// https://tools.ietf.org/html/rfc3890#section-6.2
-		// https://tools.ietf.org/html/rfc3556#section-2
-		return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, typ)
-	}
-
-	bandwidth, ok := parseUint(value[i+1:], 64)
-	if !ok {
-		return nil, fmt.Errorf("%w `%s`", errSDPInvalidNumericValue, value[i+1:])
-	}
-
-	return &Bandwidth{
-		Experimental: experimental,
-		Type:         typ,
-		Bandwidth:    bandwidth,
-	}, nil
-}
-
-func unmarshalTiming(l *lexer) (stateFn, error) {
-	var err error
-	var td TimeDescription
-
-	td.Timing.StartTime, err = l.readUint64Field()
-	if err != nil {
-		return nil, err
-	}
-
-	td.Timing.StopTime, err = l.readUint64Field()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := l.nextLine(); err != nil {
-		return nil, err
-	}
-
-	l.desc.TimeDescriptions = append(l.desc.TimeDescriptions, td)
-	return s9, nil
-}
-
-func unmarshalRepeatTimes(l *lexer) (stateFn, error) {
-	var err error
-	var newRepeatTime RepeatTime
-
-	latestTimeDesc := &l.desc.TimeDescriptions[len(l.desc.TimeDescriptions)-1]
-
-	field, err := l.readField()
-	if err != nil {
-		return nil, err
-	}
-
-	newRepeatTime.Interval, err = parseTimeUnits(field)
-	if err != nil {
-		return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, field)
-	}
-
-	field, err = l.readField()
-	if err != nil {
-		return nil, err
-	}
-
-	newRepeatTime.Duration, err = parseTimeUnits(field)
-	if err != nil {
-		return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, field)
-	}
-
-	for {
-		field, err := l.readField()
+	if len(s) != 0 && s[0] == 'u' {
+		s, err = parseStringField((*string)(&d.URI), s[1:])
 		if err != nil {
-			return nil, err
+			return d, fmt.Errorf("cannot parse uri: %s", err)
 		}
-		if len(field) == 0 {
-			break
-		}
-		offset, err := parseTimeUnits(field)
+	}
+	if len(s) != 0 && s[0] == 'e' {
+		s, err = parseStringField((*string)(&d.EmailAddress), s[1:])
 		if err != nil {
-			return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, field)
+			return d, fmt.Errorf("cannot parse email address: %s", err)
 		}
-		newRepeatTime.Offsets = append(newRepeatTime.Offsets, offset)
 	}
-
-	if err := l.nextLine(); err != nil {
-		return nil, err
-	}
-
-	latestTimeDesc.RepeatTimes = append(latestTimeDesc.RepeatTimes, newRepeatTime)
-	return s9, nil
-}
-
-func unmarshalTimeZones(l *lexer) (stateFn, error) {
-	// These fields are transimitted in pairs
-	// z=<adjustment time> <offset> <adjustment time> <offset> ....
-	// so we are making sure that there are actually multiple of 2 total.
-	for {
-		var err error
-		var timeZone TimeZone
-
-		timeZone.AdjustmentTime, err = l.readUint64Field()
+	if len(s) != 0 && s[0] == 'p' {
+		s, err = parseStringField((*string)(&d.PhoneNumber), s[1:])
 		if err != nil {
-			return nil, err
+			return d, fmt.Errorf("cannot parse phone number: %s", err)
 		}
-
-		offset, err := l.readField()
+	}
+	if len(s) != 0 && s[0] == 'c' {
+		s, err = parseConnectionInformation(&d.ConnectionInformation, s[1:], c)
 		if err != nil {
-			return nil, err
+			return d, fmt.Errorf("cannot parse connection information: %s", err)
 		}
+	}
 
-		if len(offset) == 0 {
-			break
+	for len(s) != 0 && s[0] == 'b' {
+		if s, err = parseBandwidth(c.getBandwidth(), s[1:], c); err != nil {
+			return d, fmt.Errorf("cannot parse bandwidth: %s", err)
 		}
+	}
+	d.Bandwidth = c.cloneBandwidth()
 
-		timeZone.Offset, err = parseTimeUnits(offset)
+	for len(s) != 0 && s[0] == 't' {
+		t := c.getTimeDescription()
+		if s, err = parseTiming(&t.Timing, s[1:]); err != nil {
+			return d, fmt.Errorf("cannot parse time description: %s", err)
+		}
+		for len(s) != 0 && s[0] == 'r' {
+			s, err = parseRepeatTime(c.getRepeatTime(), s[1:], c)
+			if err != nil {
+				return d, fmt.Errorf("cannot parse repeat times: %s", err)
+			}
+		}
+		t.RepeatTimes = c.cloneRepeatTime()
+	}
+	d.TimeDescriptions = c.cloneTimeDescription()
+
+	if len(s) != 0 && s[0] == 'z' {
+		d.TimeZones, s, err = parseTimeZone(s[1:], c)
 		if err != nil {
-			return nil, err
+			return d, fmt.Errorf("cannot parse time zone adjustments: %s", err)
 		}
-
-		l.desc.TimeZones = append(l.desc.TimeZones, timeZone)
 	}
 
-	if err := l.nextLine(); err != nil {
-		return nil, err
-	}
-
-	return s13, nil
-}
-
-func unmarshalSessionEncryptionKey(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
-	if err != nil {
-		return nil, err
-	}
-
-	l.desc.EncryptionKey = EncryptionKey(value)
-	return s11, nil
-}
-
-func unmarshalSessionAttribute(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
-	if err != nil {
-		return nil, err
-	}
-
-	i := strings.IndexRune(value, ':')
-	var a Attribute
-	if i > 0 {
-		a = NewAttribute(value[:i], value[i+1:])
-	} else {
-		a = NewPropertyAttribute(value)
-	}
-
-	l.desc.Attributes = append(l.desc.Attributes, a)
-	return s11, nil
-}
-
-func unmarshalMediaDescription(l *lexer) (stateFn, error) {
-	var newMediaDesc MediaDescription
-
-	// <media>
-	field, err := l.readField()
-	if err != nil {
-		return nil, err
-	}
-
-	// Set according to currently registered with IANA
-	// https://tools.ietf.org/html/rfc4566#section-5.14
-	if !anyOf(field, kAudio, kVideo, kText, kApplication, kMessage) {
-		return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, field)
-	}
-	newMediaDesc.MediaName.Media = field
-
-	// <port>
-	field, err = l.readField()
-	if err != nil {
-		return nil, err
-	}
-
-	i := strings.IndexRune(field, '/')
-	if i == -1 {
-		i = len(field)
-	} else {
-		portRange, ok := parseUint(field[i+1:], 16)
-		if !ok {
-			return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, field[i+1:])
-		}
-		newMediaDesc.MediaName.Port.Range = uint16(portRange)
-	}
-
-	port, ok := parseUint(field[:i], 16)
-	if !ok {
-		return nil, fmt.Errorf("%w `%s`", errSDPInvalidPortValue, field[:i])
-	}
-	newMediaDesc.MediaName.Port.Value = uint16(port)
-
-	// <proto>
-	field, err = l.readField()
-	if err != nil {
-		return nil, err
-	}
-
-	// Set according to currently registered with IANA
-	// https://tools.ietf.org/html/rfc4566#section-5.14
-	// https://tools.ietf.org/html/rfc4975#section-8.1
-	newMediaDesc.MediaName.Protos = make([]string, 0, countSegments(field, '/'))
-	for pos := 0; pos < len(field); pos++ {
-		field = field[pos:]
-		if pos = strings.IndexRune(field, '/'); pos == -1 {
-			pos = len(field)
-		}
-		proto := field[:pos]
-		if !anyOf(proto, kUdp, kRtp, kAvp, kSavp, kSavpf, kTls, kDtls, kSctp, kAvpf, kTcp, kMsrp) {
-			return nil, fmt.Errorf("%w `%s`", errSDPInvalidValue, proto)
-		}
-		newMediaDesc.MediaName.Protos = append(newMediaDesc.MediaName.Protos, proto)
-	}
-
-	// <fmt>...
-	for {
-		field, err = l.readField()
+	if len(s) != 0 && s[0] == 'k' {
+		s, err = parseStringField((*string)(&d.EncryptionKey), s[1:])
 		if err != nil {
-			return nil, err
+			return d, fmt.Errorf("cannot parse encryption key: %s", err)
 		}
-		if len(field) == 0 {
-			break
+	}
+
+	for len(s) != 0 && s[0] == 'a' {
+		if s, err = parseAttribute(c.getAttribute(), s[1:], c); err != nil {
+			return d, fmt.Errorf("cannot parse session attribute: %s", err)
 		}
-		newMediaDesc.MediaName.Formats = append(newMediaDesc.MediaName.Formats, field)
 	}
+	d.Attributes = c.cloneAttribute()
 
-	if err := l.nextLine(); err != nil {
-		return nil, err
+	for len(s) != 0 && s[0] == 'm' {
+		m := c.getMediaDescription()
+		if s, err = parseMediaName(&m.MediaName, s[1:], c); err != nil {
+			return d, fmt.Errorf("cannot parse media description: %s", err)
+		}
+
+		for len(s) != 0 && s[0] != 'm' {
+			if len(s) != 0 && s[0] == 'i' {
+				s, err = parseStringField((*string)(&m.MediaTitle), s[1:])
+				if err != nil {
+					return d, fmt.Errorf("cannot parse session information: %s", err)
+				}
+			}
+
+			if len(s) != 0 && s[0] == 'c' {
+				s, err = parseConnectionInformation(&m.ConnectionInformation, s[1:], c)
+				if err != nil {
+					return d, fmt.Errorf("cannot parse connection information: %s", err)
+				}
+			}
+
+			for len(s) != 0 && s[0] == 'b' {
+				if s, err = parseBandwidth(c.getBandwidth(), s[1:], c); err != nil {
+					return d, fmt.Errorf("cannot parse bandwidth: %s", err)
+				}
+			}
+
+			if len(s) != 0 && s[0] == 'k' {
+				s, err = parseStringField((*string)(&m.EncryptionKey), s[1:])
+				if err != nil {
+					return d, fmt.Errorf("cannot parse encryption key: %s", err)
+				}
+			}
+
+			for len(s) != 0 && s[0] == 'a' {
+				if s, err = parseAttribute(c.getAttribute(), s[1:], c); err != nil {
+					return d, fmt.Errorf("cannot parse attribute: %s", err)
+				}
+			}
+		}
+		m.Bandwidth = c.cloneBandwidth()
+		m.Attributes = c.cloneAttribute()
 	}
+	d.MediaDescriptions = c.cloneMediaDescription()
 
-	l.desc.MediaDescriptions = append(l.desc.MediaDescriptions, newMediaDesc)
-	return s12, nil
+	return d, nil
 }
 
-func unmarshalMediaTitle(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+func parseVersion(f *Version, s string) (string, error) {
+	s, err := skipEq(s)
 	if err != nil {
-		return nil, err
+		return s, err
 	}
-
-	latestMediaDesc := l.desc.MediaDescriptions[len(l.desc.MediaDescriptions)-1]
-	latestMediaDesc.MediaTitle = Information(value)
-	return s16, nil
-}
-
-func unmarshalMediaConnectionInformation(l *lexer) (stateFn, error) {
-	var err error
-	latestMediaDesc := l.desc.MediaDescriptions[len(l.desc.MediaDescriptions)-1]
-	latestMediaDesc.ConnectionInformation, err = l.unmarshalConnectionInformation()
+	n, s, err := parseUint8(s)
 	if err != nil {
-		return nil, err
+		return s, err
 	}
-	return s15, nil
+	*f = Version(n)
+	return skipNewLine(s), nil
 }
 
-func unmarshalMediaBandwidth(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+func parseOrigin(f *Origin, s string) (string, error) {
+	s, err := skipEq(s)
 	if err != nil {
-		return nil, err
+		return s, err
 	}
 
-	latestMediaDesc := l.desc.MediaDescriptions[len(l.desc.MediaDescriptions)-1]
-	bandwidth, err := unmarshalBandwidth(value)
+	f.Username, s, err = parseNonWSString(s)
 	if err != nil {
-		return nil, fmt.Errorf("%w `b=%v`", errSDPInvalidSyntax, value)
+		return s, err
 	}
-	latestMediaDesc.Bandwidth = append(latestMediaDesc.Bandwidth, *bandwidth)
-	return s15, nil
-}
 
-func unmarshalMediaEncryptionKey(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	f.SessionID, s, err = parseUint64(s)
 	if err != nil {
-		return nil, err
+		return s, err
 	}
+	s = skipWS(s)
 
-	latestMediaDesc := l.desc.MediaDescriptions[len(l.desc.MediaDescriptions)-1]
-	latestMediaDesc.EncryptionKey = EncryptionKey(value)
-	return s14, nil
-}
-
-func unmarshalMediaAttribute(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+	f.SessionVersion, s, err = parseUint64(s)
 	if err != nil {
-		return nil, err
+		return s, err
+	}
+	s = skipWS(s)
+
+	f.NetworkType, s, err = parseNonWSString(s)
+	if err != nil {
+		return s, err
 	}
 
-	i := strings.IndexRune(value, ':')
-	var a Attribute
-	if i > 0 {
-		a = NewAttribute(value[:i], value[i+1:])
-	} else {
-		a = NewPropertyAttribute(value)
+	f.AddressType, s, err = parseNonWSString(s)
+	if err != nil {
+		return s, err
 	}
 
-	latestMediaDesc := l.desc.MediaDescriptions[len(l.desc.MediaDescriptions)-1]
-	latestMediaDesc.Attributes = append(latestMediaDesc.Attributes, a)
-	return s14, nil
+	f.UnicastAddress, s, err = parseNonWSString(s)
+	if err != nil {
+		return s, err
+	}
+
+	return skipNewLine(s), nil
 }
 
-func parseTimeUnits(value string) (num int64, err error) {
-	if len(value) == 0 {
-		return 0, fmt.Errorf("%w `%s`", errSDPInvalidValue, value)
+func parseStringField(f *string, s string) (string, error) {
+	s, err := skipEq(s)
+	if err != nil {
+		return s, err
 	}
-	k, ok := timeShorthand(value[len(value)-1])
-	if ok {
-		value = value[:len(value)-1]
+
+	*f, s, err = parseLine(s)
+	if err != nil {
+		return s, err
 	}
-	num, ok = parseInt(value)
-	if !ok {
-		return 0, fmt.Errorf("%w `%s`", errSDPInvalidValue, value)
-	}
-	return num * k, nil
+
+	return skipNewLine(s), nil
 }
 
-func timeShorthand(b byte) (int64, bool) {
-	// Some time offsets in the protocol can be provided with a shorthand
-	// notation. This code ensures to convert it to NTP timestamp format.
-	switch b {
-	case 'd': // days
-		return 86400, true
-	case 'h': // hours
-		return 3600, true
-	case 'm': // minutes
-		return 60, true
-	case 's': // seconds (allowed for completeness)
-		return 1, true
-	default:
-		return 1, false
+func parseConnectionInformation(f *ConnectionInformation, s string, c *cache) (string, error) {
+	s, err := skipEq(s)
+	if err != nil {
+		return s, err
 	}
+
+	f.NetworkType, s, err = parseNonWSString(s)
+	if err != nil {
+		return s, err
+	}
+
+	f.AddressType, s, err = parseNonWSString(s)
+	if err != nil {
+		return s, err
+	}
+
+	addr, s, err := parseDelimitedStringSlice(s, '/', c)
+	if err != nil {
+		return s, err
+	}
+
+	switch len(addr) {
+	case 0:
+		return s, fmt.Errorf("expected connection address found %q", s)
+	case 1:
+		f.Address.Address = addr[0]
+	case 2:
+		f.Address.Address = addr[0]
+		f.Address.Range, _, err = parseUint64(addr[1])
+		if err != nil {
+			return s, fmt.Errorf("cannot parse connection address range: %s", err)
+		}
+	case 3:
+		f.Address.Address = addr[0]
+		f.Address.TTL, _, err = parseUint64(addr[1])
+		if err != nil {
+			return s, fmt.Errorf("cannot parse connection address ttl: %s", err)
+		}
+		f.Address.Range, _, err = parseUint64(addr[2])
+		if err != nil {
+			return s, fmt.Errorf("cannot parse connection address range: %s", err)
+		}
+	}
+
+	return skipNewLine(s), nil
 }
 
-func parseInt(value string) (int64, bool) {
+func parseBandwidth(f *Bandwidth, s string, c *cache) (string, error) {
+	s, err := skipEq(s)
+	if err != nil {
+		return s, err
+	}
+
+	f.Type, s, err = parseDelimitedString(s, ':')
+	if err != nil {
+		return s, fmt.Errorf("cannot parse bandwidth: %s", err)
+	}
+
+	f.Bandwidth, s, err = parseUint64(s)
+	if err != nil {
+		return s, fmt.Errorf("cannot parse bandwidth: %s", err)
+	}
+
+	return skipNewLine(s), nil
+}
+
+func parseTiming(f *Timing, s string) (string, error) {
+	s, err := skipEq(s)
+	if err != nil {
+		return s, err
+	}
+
+	f.StartTime, s, err = parseUint64(s)
+	if err != nil {
+		return s, fmt.Errorf("cannot parse timing: %s", err)
+	}
+	s = skipWS(s)
+
+	f.StopTime, s, err = parseUint64(s)
+	if err != nil {
+		return s, fmt.Errorf("cannot parse timing: %s", err)
+	}
+
+	return skipNewLine(s), nil
+}
+
+func parseRepeatTime(f *RepeatTime, s string, c *cache) (string, error) {
+	s, err := skipEq(s)
+	if err != nil {
+		return s, err
+	}
+
+	f.Interval, s, err = parseTime(s)
+	if err != nil {
+		return s, fmt.Errorf("cannot parse repeat time interval: %s", err)
+	}
+
+	f.Duration, s, err = parseTime(s)
+	if err != nil {
+		return s, fmt.Errorf("cannot parse repeat time duration: %s", err)
+	}
+
+	offsets, s, err := parseDelimitedStringSlice(s, ' ', c)
+	if err != nil {
+		return s, fmt.Errorf("cannot parse repeat time offsets: %s", err)
+	}
+	f.Offsets = make([]int64, len(offsets))
+	for i := 0; i < len(offsets); i++ {
+		f.Offsets[i], _, err = parseTime(offsets[i])
+		if err != nil {
+			return s, fmt.Errorf("cannot parse repeat time offsets: %s", err)
+		}
+	}
+
+	return skipNewLine(s), nil
+}
+
+func parseTimeZone(s string, c *cache) ([]TimeZone, string, error) {
+	s, err := skipEq(s)
+	if err != nil {
+		return nil, s, err
+	}
+
+	parts, s, err := parseDelimitedStringSlice(s, ' ', c)
+	if err != nil {
+		return nil, s, fmt.Errorf("cannot parse time zones: %s", err)
+	}
+	if len(parts)%2 != 0 {
+		return nil, s, fmt.Errorf("cannot parse time zones: no adjustment time for offset")
+	}
+
+	tzs := make([]TimeZone, len(parts)/2)
+	for i := 0; i < len(tzs); i++ {
+		tzs[i].AdjustmentTime, _, err = parseUint64(parts[i*2])
+		if err != nil {
+			return nil, s, fmt.Errorf("cannot parse time zones: %s", err)
+		}
+
+		tzs[i].Offset, _, err = parseTime(parts[i*2+1])
+		if err != nil {
+			return nil, s, fmt.Errorf("cannot parse time zones: %s", err)
+		}
+	}
+
+	return tzs, skipNewLine(s), nil
+}
+
+func parseAttribute(f *Attribute, s string, c *cache) (string, error) {
+	s, err := skipEq(s)
+	if err != nil {
+		return s, err
+	}
+
+	for i := 0; i < len(s); i++ {
+		if s[i] == ':' {
+			f.Key = s[:i]
+			f.Value, s, err = parseLine(s[i+1:])
+			if err != nil {
+				return s, fmt.Errorf("cannot parse attribute: %s", err)
+			}
+			return s, nil
+		}
+		if s[i] == '\r' && len(s) >= i+1 && s[i+1] == '\n' {
+			f.Key = s[:i]
+			return s[i+2:], nil
+		}
+		if s[i] == '\n' {
+			f.Key = s[:i]
+			return s[i+1:], nil
+		}
+	}
+
+	return s, fmt.Errorf("cannot parse attribute: unexpected eof")
+}
+
+func parseMediaName(f *MediaName, s string, c *cache) (string, error) {
+	s, err := skipEq(s)
+	if err != nil {
+		return s, err
+	}
+
+	f.Media, s, err = parseNonWSString(s)
+	if err != nil {
+		return s, fmt.Errorf("cannot parse media name: %s", err)
+	}
+
+	port, s, err := parseDelimitedStringSlice(s, '/', c)
+	if err != nil {
+		return s, fmt.Errorf("cannot parse media name port: %s", err)
+	}
+
+	if len(port) != 0 {
+		f.Port.Value, _, err = parseUint16(port[0])
+		if err != nil {
+			return s, fmt.Errorf("cannot parse media name port: %s", err)
+		}
+	}
+	if len(port) == 2 {
+		f.Port.Range, _, err = parseUint16(port[1])
+		if err != nil {
+			return s, fmt.Errorf("cannot parse media name port: %s", err)
+		}
+	}
+
+	protos, s, err := parseDelimitedStringSlice(s, '/', c)
+	if err != nil {
+		return s, fmt.Errorf("cannot parse media name proto: %s", err)
+	}
+	f.Protos = make([]string, len(protos))
+	copy(f.Protos, protos)
+
+	formats, s, err := parseDelimitedStringSlice(s, ' ', c)
+	if err != nil {
+		return s, fmt.Errorf("cannot parse media name formats: %s", err)
+	}
+	f.Formats = make([]string, len(formats))
+	copy(f.Formats, formats)
+
+	return skipNewLine(s), nil
+}
+
+func skipEq(s string) (string, error) {
+	if len(s) == 0 || s[0] != '=' {
+		return s, fmt.Errorf("expected '=' found %q", s)
+	}
+	return s[1:], nil
+}
+
+func skipWS(s string) string {
+	if len(s) == 0 || s[0] != ' ' {
+		return s
+	}
+	return skipWSSlow(s)
+}
+
+func skipWSSlow(s string) string {
+	for i := 0; i < len(s); i++ {
+		if s[i] != ' ' {
+			return s[i:]
+		}
+	}
+	return ""
+}
+
+func skipNewLine(s string) string {
+	for i := 0; i < len(s); i++ {
+		if s[i] != '\r' && s[i] != '\n' {
+			return s[i:]
+		}
+	}
+	return ""
+}
+
+func parseLine(s string) (string, string, error) {
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\r' && len(s) >= i+1 && s[i+1] == '\n' {
+			return s[:i], s[i+2:], nil
+		}
+		if s[i] == '\n' {
+			return s[:i], s[i+1:], nil
+		}
+	}
+	return "", s, fmt.Errorf("unexpected eof")
+}
+
+func parseNonWSString(s string) (string, string, error) {
+	for i := 0; i < len(s); i++ {
+		if s[i] == ' ' {
+			return s[:i], s[i+1:], nil
+		}
+		if s[i] == '\r' && len(s) >= i+1 && s[i+1] == '\n' {
+			return s[:i], s[i:], nil
+		}
+		if s[i] == '\n' {
+			return s[:i], s[i:], nil
+		}
+	}
+	return "", s, fmt.Errorf("unexpected eof")
+}
+
+func parseDelimitedString(s string, ch byte) (string, string, error) {
+	for i := 0; i < len(s); i++ {
+		if s[i] == ch {
+			return s[:i], s[i+1:], nil
+		}
+	}
+	return "", s, fmt.Errorf("expected %q found %q", ch, s)
+}
+
+func parseDelimitedStringSlice(s string, ch byte, c *cache) ([]string, string, error) {
+	c.ss = c.ss[:0]
+	for i := 0; i < len(s); i++ {
+		if s[i] == ch {
+			c.ss = append(c.ss, s[:i])
+			s = s[i+1:]
+			i = 0
+		}
+		if s[i] == ' ' {
+			c.ss = append(c.ss, s[:i])
+			return c.ss, s[i+1:], nil
+		}
+		if s[i] == '\r' && len(s) >= i+1 && s[i+1] == '\n' {
+			c.ss = append(c.ss, s[:i])
+			return c.ss, s[i+2:], nil
+		}
+		if s[i] == '\n' {
+			c.ss = append(c.ss, s[:i])
+			return c.ss, s[i+1:], nil
+		}
+	}
+	return nil, s, fmt.Errorf("expected %q found %q", ch, s)
+}
+
+func parseTime(s string) (int64, string, error) {
+	n, s, err := parseInt64(s)
+	if err != nil {
+		return 0, s, err
+	}
+
+	if len(s) == 0 {
+		return n, s, nil
+	}
+	switch s[0] {
+	case 'd':
+		n *= 86400
+		s = s[1:]
+	case 'h':
+		n *= 3600
+		s = s[1:]
+	case 'm':
+		n *= 60
+		s = s[1:]
+	case 's':
+		s = s[1:]
+	}
+
+	return n, skipWS(s), nil
+}
+
+func parseInt64(s string) (int64, string, error) {
 	sign := int64(1)
-	if len(value) != 0 && value[0] == '-' {
+	if len(s) != 0 && s[0] == '-' {
 		sign = -1
-		value = value[1:]
+		s = s[1:]
 	}
-	n, ok := parseUint(value, 64)
-	if !ok {
-		return 0, false
+	n, s, err := parseUintN(s, 63)
+	if err != nil {
+		return 0, s, err
 	}
-	return sign * int64(n), true
+	return sign * int64(n), s, nil
 }
 
-func parseUint(value string, bits int) (uint64, bool) {
+func parseUint8(s string) (uint8, string, error) {
+	n, s, err := parseUintN(s, 8)
+	return uint8(n), s, err
+}
+
+func parseUint16(s string) (uint16, string, error) {
+	n, s, err := parseUintN(s, 16)
+	return uint16(n), s, err
+}
+
+func parseUint32(s string) (uint32, string, error) {
+	n, s, err := parseUintN(s, 32)
+	return uint32(n), s, err
+}
+
+func parseUintN(s string, bits int) (uint64, string, error) {
+	n, s, err := parseUint64(s)
+	if err != nil {
+		return 0, s, err
+	}
+	if n > uint64(1<<bits)-1 {
+		return 0, s, fmt.Errorf("value out of range: %d", n)
+	}
+	return n, s, nil
+}
+
+func parseUint64(s string) (uint64, string, error) {
 	var n uint64
-	for _, ch := range value {
-		if ch < '0' || ch > '9' {
-			return 0, false
-		}
-
-		n = n*10 + uint64(ch-'0')
+	var i int
+	for ; i < len(s) && s[i] >= '0' && s[i] <= '9'; i++ {
+		n = n*10 + uint64(s[i]-'0')
 	}
-	return n, n <= uint64(1<<bits)-1
-}
-
-func countSegments(value string, r rune) int {
-	n := 1
-	for pos := 0; pos < len(value); {
-		i := strings.IndexRune(value[pos:], r)
-		if i == -1 {
-			break
-		}
-		pos += i + 1
-		n++
+	if i == 0 {
+		return 0, s, fmt.Errorf("expected number found %q", s)
 	}
-	return n
+	return n, s[i:], nil
 }

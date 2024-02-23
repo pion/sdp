@@ -5,7 +5,7 @@ package sdp
 
 import (
 	"errors"
-	"io"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -114,30 +114,30 @@ func (c Codec) AppendTo(b []byte) []byte {
 	return b
 }
 
-// func (c Codec) String() string {
-// 	return fmt.Sprintf("%d %s/%d/%s (%s) [%s]", c.PayloadType, c.Name, c.ClockRate, c.EncodingParameters, c.Fmtp, bytes.Join(c.RTCPFeedback, ", "))
-// }
+func (c Codec) String() string {
+	return string(c.AppendTo(nil))
+}
 
 func parseRtpmap(rtpmap Attribute) (codec Codec, err error) {
 	// <payload type> <encoding name>/<clock rate>[/<encoding parameters>]
-	i := strings.IndexRune(rtpmap.Value, ' ')
+	i := strings.IndexByte(rtpmap.Value, ' ')
 	if i == -1 {
 		return codec, errExtractCodecRtpmap
 	}
 
-	ptInt, ok := parseUint(rtpmap.Value[:i], 8)
-	if !ok {
-		return codec, errExtractCodecRtpmap
+	ptInt, _, err := parseUint8(rtpmap.Value[:i])
+	if err != nil {
+		return codec, fmt.Errorf("%w: %s", errExtractCodecRtpmap, err)
 	}
 	codec.PayloadType = uint8(ptInt)
 
-	split := strings.Split(rtpmap.Value[i+1:], kSlash)
+	split := strings.Split(rtpmap.Value[i+1:], "/")
 	codec.Name = split[0]
 	parts := len(split)
 	if parts > 1 {
-		rate, ok := parseUint(split[1], 32)
-		if !ok {
-			return codec, errExtractCodecRtpmap
+		rate, _, err := parseUint32(split[1])
+		if err != nil {
+			return codec, fmt.Errorf("%w: %s", errExtractCodecRtpmap, err)
 		}
 		codec.ClockRate = uint32(rate)
 	}
@@ -150,14 +150,14 @@ func parseRtpmap(rtpmap Attribute) (codec Codec, err error) {
 
 func parseFmtp(fmtp Attribute) (codec Codec, err error) {
 	// <format> <format specific parameters>
-	i := strings.IndexRune(fmtp.Value, ' ')
+	i := strings.IndexByte(fmtp.Value, ' ')
 	if i == -1 {
 		return codec, errExtractCodecFmtp
 	}
 
-	ptInt, ok := parseUint(fmtp.Value[i+1:], 8)
-	if !ok {
-		return codec, errExtractCodecFmtp
+	ptInt, _, err := parseUint8(fmtp.Value[i+1:])
+	if err != nil {
+		return codec, fmt.Errorf("%w: %s", errExtractCodecFmtp, err)
 	}
 	codec.PayloadType = uint8(ptInt)
 
@@ -168,14 +168,14 @@ func parseFmtp(fmtp Attribute) (codec Codec, err error) {
 
 func parseRtcpFb(rtcpFb Attribute) (codec Codec, err error) {
 	// <payload type> <RTCP feedback type> [<RTCP feedback parameter>]
-	i := strings.IndexRune(rtcpFb.Value, ' ')
+	i := strings.IndexByte(rtcpFb.Value, ' ')
 	if i == -1 {
 		return codec, errExtractCodecRtcpFb
 	}
 
-	ptInt, ok := parseUint(rtcpFb.Value[:i], 8)
-	if !ok {
-		return codec, errExtractCodecRtcpFb
+	ptInt, _, err := parseUint8(rtcpFb.Value[:i])
+	if err != nil {
+		return codec, fmt.Errorf("%w: %s", errExtractCodecRtcpFb, err)
 	}
 
 	codec.PayloadType = uint8(ptInt)
@@ -212,12 +212,12 @@ func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
 		// static codecs that do not require a rtpmap
 		0: {
 			PayloadType: 0,
-			Name:        kPcmu,
+			Name:        "pcmu",
 			ClockRate:   8000,
 		},
 		8: {
 			PayloadType: 8,
-			Name:        kPcma,
+			Name:        "pcma",
 			ClockRate:   8000,
 		},
 	}
@@ -248,8 +248,8 @@ func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
 }
 
 func equivalentFmtp(want, got string) bool {
-	wantSplit := strings.Split(want, kSemicolon)
-	gotSplit := strings.Split(got, kSemicolon)
+	wantSplit := strings.Split(want, ";")
+	gotSplit := strings.Split(got, ";")
 
 	if len(wantSplit) != len(gotSplit) {
 		return false
@@ -310,103 +310,4 @@ func (s *SessionDescription) GetPayloadTypeForCodec(wanted Codec) (uint8, error)
 	}
 
 	return 0, errCodecNotFound
-}
-
-type stateFn func(*lexer) (stateFn, error)
-
-type lexer struct {
-	desc *SessionDescription
-	baseLexer
-}
-
-type attrName byte
-
-const invalidAttrName attrName = 0
-
-type attrNameToState func(name attrName) stateFn
-
-func (l *lexer) handleType(fn attrNameToState) (stateFn, error) {
-	name, err := l.readFieldName()
-	if err == io.EOF {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	}
-
-	if res := fn(name); res != nil {
-		return res, nil
-	}
-
-	return nil, l.syntaxError()
-}
-
-func uintLen(n uint64) int {
-	return log10(n) + 1
-}
-
-func log10(n uint64) int {
-	switch {
-	case n == 0:
-		return 0
-	case n < 1e1:
-		return 1
-	case n < 1e2:
-		return 2
-	case n < 1e3:
-		return 3
-	case n < 1e4:
-		return 4
-	case n < 1e5:
-		return 5
-	case n < 1e6:
-		return 6
-	case n < 1e7:
-		return 7
-	case n < 1e8:
-		return 8
-	case n < 1e9:
-		return 9
-	case n < 1e10:
-		return 10
-	case n < 1e11:
-		return 11
-	case n < 1e12:
-		return 12
-	case n < 1e13:
-		return 13
-	case n < 1e14:
-		return 14
-	case n < 1e15:
-		return 15
-	case n < 1e16:
-		return 16
-	case n < 1e17:
-		return 17
-	case n < 1e18:
-		return 18
-	case n < 1e19:
-		return 19
-	default:
-		return 20
-	}
-}
-
-// increase capacity of byte slice to accommodate at least n bytes
-func growByteSlice(b []byte, n int) []byte {
-	if cap(b)-len(b) >= n {
-		return b
-	}
-	bc := make([]byte, len(b), len(b)+n)
-	copy(bc, b)
-	return bc
-}
-
-// increase capacity of byte slice slice to accommodate at least n slices
-func growByteSliceSlice(b [][]byte, n int) [][]byte {
-	if cap(b)-len(b) >= n {
-		return b
-	}
-	bc := make([][]byte, len(b), len(b)+n)
-	copy(bc, b)
-	return bc
 }

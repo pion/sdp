@@ -4,6 +4,7 @@
 package sdp
 
 import (
+	"net/url"
 	"strconv"
 )
 
@@ -38,6 +39,10 @@ func (t URI) AppendTo(b []byte) []byte {
 	return append(b, t...)
 }
 
+func (t URI) URL() (*url.URL, error) {
+	return url.Parse(string(t))
+}
+
 // ConnectionInformation defines the representation for the "c=" field
 // containing connection data.
 type ConnectionInformation struct {
@@ -51,11 +56,10 @@ func (t ConnectionInformation) Defined() bool {
 }
 
 func (t ConnectionInformation) Len() int {
-	n := t.Address.Len()
-	if n > 0 {
-		n++
+	n := len(t.NetworkType) + len(t.AddressType) + 1
+	if t.Address.Defined() {
+		n += t.Address.Len() + 1
 	}
-	n += len(t.NetworkType) + len(t.AddressType) + 1
 	return n
 }
 
@@ -64,7 +68,7 @@ func (t ConnectionInformation) AppendTo(b []byte) []byte {
 	b = append(b, t.NetworkType...)
 	b = append(b, ' ')
 	b = append(b, t.AddressType...)
-	if t.Address.Len() != 0 {
+	if t.Address.Defined() {
 		b = append(b, ' ')
 		b = t.Address.AppendTo(b)
 	}
@@ -76,6 +80,10 @@ type Address struct {
 	Address string
 	TTL     uint64
 	Range   uint64
+}
+
+func (t Address) Defined() bool {
+	return len(t.Address) != 0
 }
 
 func (t Address) Len() int {
@@ -106,24 +114,16 @@ func (t Address) AppendTo(b []byte) []byte {
 // Bandwidth describes an optional field which denotes the proposed bandwidth
 // to be used by the session or media.
 type Bandwidth struct {
-	Experimental bool
-	Type         string
-	Bandwidth    uint64
+	Type      string
+	Bandwidth uint64
 }
 
 func (t Bandwidth) Len() int {
-	n := len(t.Type) + uintLen(t.Bandwidth) + 1
-	if t.Experimental {
-		n += 2
-	}
-	return n
+	return len(t.Type) + uintLen(t.Bandwidth) + 1
 }
 
 func (t Bandwidth) AppendTo(b []byte) []byte {
 	b = growByteSlice(b, t.Len())
-	if t.Experimental {
-		b = append(b, "X-"...)
-	}
 	b = append(b, t.Type...)
 	b = append(b, ':')
 	b = strconv.AppendUint(b, t.Bandwidth, 10)

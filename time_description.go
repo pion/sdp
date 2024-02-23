@@ -5,7 +5,6 @@ package sdp
 
 import (
 	"strconv"
-	"strings"
 )
 
 // TimeDescription describes "t=", "r=" fields of the session description
@@ -64,9 +63,9 @@ func (r RepeatTime) Len() int {
 
 func (r RepeatTime) AppendTo(b []byte) []byte {
 	b = growByteSlice(b, r.Len())
-	b = strconv.AppendUint(b, uint64(r.Interval), 10)
+	b = strconv.AppendInt(b, r.Interval, 10)
 	b = append(b, ' ')
-	b = strconv.AppendUint(b, uint64(r.Duration), 10)
+	b = strconv.AppendInt(b, r.Duration, 10)
 	for _, o := range r.Offsets {
 		b = append(b, ' ')
 		b = strconv.AppendUint(b, uint64(o), 10)
@@ -75,12 +74,5 @@ func (r RepeatTime) AppendTo(b []byte) []byte {
 }
 
 func (r RepeatTime) String() string {
-	fields := make([]string, 0)
-	fields = append(fields, strconv.FormatInt(r.Interval, 10))
-	fields = append(fields, strconv.FormatInt(r.Duration, 10))
-	for _, value := range r.Offsets {
-		fields = append(fields, strconv.FormatInt(value, 10))
-	}
-
-	return strings.Join(fields, " ")
+	return string(r.AppendTo(nil))
 }

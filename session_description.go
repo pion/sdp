@@ -4,7 +4,6 @@
 package sdp
 
 import (
-	"fmt"
 	"strconv"
 )
 
@@ -133,15 +132,7 @@ func (o Origin) AppendTo(b []byte) []byte {
 }
 
 func (o Origin) String() string {
-	return fmt.Sprintf(
-		"%v %d %d %v %v %v",
-		o.Username,
-		o.SessionID,
-		o.SessionVersion,
-		o.NetworkType,
-		o.AddressType,
-		o.UnicastAddress,
-	)
+	return string(o.AppendTo(nil))
 }
 
 // SessionName describes a structured representations for the "s=" field

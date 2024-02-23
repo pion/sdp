@@ -710,8 +710,8 @@ func TestRoundTrip(t *testing.T) {
 				want = test.Actual
 			}
 			if got := string(actual); got != want {
-				t.Fatalf("Marshal:\ngot=%s\nwant=%s",
-					strconv.Quote(got), strconv.Quote(want),
+				t.Fatalf("Marshal:\n src=%s\n got=%s\nwant=%s",
+					strconv.Quote(test.SDP), strconv.Quote(got), strconv.Quote(want),
 				)
 			}
 			require.Equal(t, len(actual), sd.Len(), "marshal length mismatch")
@@ -734,9 +734,7 @@ func TestUnmarshalRepeatTimes(t *testing.T) {
 	}
 
 	err = sd.Unmarshal(TimingSDP + "r=\r\n")
-	if got, want := err, errSDPInvalidValue; !errors.Is(got, want) {
-		t.Fatalf("Marshal(): err=%v, want %v", got, want)
-	}
+	require.Error(t, err)
 }
 
 func TestUnmarshalTimeZones(t *testing.T) {
@@ -758,21 +756,16 @@ func TestUnmarshalNonNilAddress(t *testing.T) {
 	in := "v=0\r\no=0 0 0 IN IP4 0\r\ns=0\r\nc=IN IP4\r\nt=0 0\r\n"
 	var sd SessionDescription
 	err := sd.Unmarshal(in)
-	if err != nil {
-		t.Fatalf("failed to unmarshal %q", in)
-	}
+	require.NoError(t, err)
 	out, err := sd.Marshal()
-	if err != nil {
-		t.Errorf("failed to marshal unmarshalled %q", in)
-	}
-	if string(out) != in {
-		t.Errorf("round trip = %q want %q", out, in)
-	}
+	require.NoError(t, err)
+	require.Equal(t, in, string(out))
 }
 
 func BenchmarkUnmarshal(b *testing.B) {
 	b.ReportAllocs()
 	raw := CanonicalMarshalSDP
+	// raw := BigSDP
 	for i := 0; i < b.N; i++ {
 		var sd SessionDescription
 		err := sd.Unmarshal(raw)
