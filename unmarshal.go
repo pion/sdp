@@ -265,12 +265,14 @@ func parseDescription(s string, c *cache) (d SessionDescription, err error) {
 			return d, fmt.Errorf("cannot parse media description: %s", err)
 		}
 
-		for len(s) != 0 && s[0] != 'm' {
+		for ok := true; ok && len(s) != 0 && s[0] != 'm'; {
+			ok = false
 			if len(s) != 0 && s[0] == 'i' {
 				s, err = parseStringField((*string)(&m.MediaTitle), s[1:])
 				if err != nil {
 					return d, fmt.Errorf("cannot parse session information: %s", err)
 				}
+				ok = true
 			}
 
 			if len(s) != 0 && s[0] == 'c' {
@@ -278,12 +280,14 @@ func parseDescription(s string, c *cache) (d SessionDescription, err error) {
 				if err != nil {
 					return d, fmt.Errorf("cannot parse connection information: %s", err)
 				}
+				ok = true
 			}
 
 			for len(s) != 0 && s[0] == 'b' {
 				if s, err = parseBandwidth(c.getBandwidth(), s[1:], c); err != nil {
 					return d, fmt.Errorf("cannot parse bandwidth: %s", err)
 				}
+				ok = true
 			}
 
 			if len(s) != 0 && s[0] == 'k' {
@@ -291,12 +295,14 @@ func parseDescription(s string, c *cache) (d SessionDescription, err error) {
 				if err != nil {
 					return d, fmt.Errorf("cannot parse encryption key: %s", err)
 				}
+				ok = true
 			}
 
 			for len(s) != 0 && s[0] == 'a' {
 				if s, err = parseAttribute(c.getAttribute(), s[1:], c); err != nil {
 					return d, fmt.Errorf("cannot parse attribute: %s", err)
 				}
+				ok = true
 			}
 		}
 		m.Bandwidth = c.cloneBandwidth()
