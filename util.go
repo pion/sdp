@@ -125,11 +125,10 @@ func parseRtpmap(rtpmap Attribute) (codec Codec, err error) {
 		return codec, errExtractCodecRtpmap
 	}
 
-	ptInt, _, err := parseUint8(rtpmap.Value[:i])
+	codec.PayloadType, _, err = parseUint8(rtpmap.Value[:i])
 	if err != nil {
 		return codec, fmt.Errorf("%w: %s", errExtractCodecRtpmap, err)
 	}
-	codec.PayloadType = uint8(ptInt)
 
 	split := strings.Split(rtpmap.Value[i+1:], "/")
 	codec.Name = split[0]
@@ -155,13 +154,12 @@ func parseFmtp(fmtp Attribute) (codec Codec, err error) {
 		return codec, errExtractCodecFmtp
 	}
 
-	ptInt, _, err := parseUint8(fmtp.Value[i+1:])
+	codec.PayloadType, _, err = parseUint8(fmtp.Value[:i])
 	if err != nil {
 		return codec, fmt.Errorf("%w: %s", errExtractCodecFmtp, err)
 	}
-	codec.PayloadType = uint8(ptInt)
 
-	codec.Fmtp = fmtp.Value[:i]
+	codec.Fmtp = fmtp.Value[i+1:]
 
 	return codec, nil
 }
@@ -173,12 +171,11 @@ func parseRtcpFb(rtcpFb Attribute) (codec Codec, err error) {
 		return codec, errExtractCodecRtcpFb
 	}
 
-	ptInt, _, err := parseUint8(rtcpFb.Value[:i])
+	codec.PayloadType, _, err = parseUint8(rtcpFb.Value[:i])
 	if err != nil {
 		return codec, fmt.Errorf("%w: %s", errExtractCodecRtcpFb, err)
 	}
 
-	codec.PayloadType = uint8(ptInt)
 	codec.RTCPFeedback = append(codec.RTCPFeedback, rtcpFb.Value[i+1:])
 
 	return codec, nil
@@ -190,16 +187,16 @@ func mergeCodecs(codec Codec, codecs map[uint8]Codec) {
 	if savedCodec.PayloadType == 0 {
 		savedCodec.PayloadType = codec.PayloadType
 	}
-	if len(savedCodec.Name) == 0 {
+	if savedCodec.Name == "" {
 		savedCodec.Name = codec.Name
 	}
 	if savedCodec.ClockRate == 0 {
 		savedCodec.ClockRate = codec.ClockRate
 	}
-	if len(savedCodec.EncodingParameters) == 0 {
+	if savedCodec.EncodingParameters == "" {
 		savedCodec.EncodingParameters = codec.EncodingParameters
 	}
-	if len(savedCodec.Fmtp) == 0 {
+	if savedCodec.Fmtp == "" {
 		savedCodec.Fmtp = codec.Fmtp
 	}
 	savedCodec.RTCPFeedback = append(savedCodec.RTCPFeedback, codec.RTCPFeedback...)
@@ -212,12 +209,12 @@ func (s *SessionDescription) buildCodecMap() map[uint8]Codec {
 		// static codecs that do not require a rtpmap
 		0: {
 			PayloadType: 0,
-			Name:        "pcmu",
+			Name:        "PCMU",
 			ClockRate:   8000,
 		},
 		8: {
 			PayloadType: 8,
-			Name:        "pcma",
+			Name:        "PCMA",
 			ClockRate:   8000,
 		},
 	}

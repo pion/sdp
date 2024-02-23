@@ -71,7 +71,7 @@ func NewJSEPSessionDescription(identity bool) (*SessionDescription, error) {
 			Username:       "-",
 			SessionID:      sid,
 			SessionVersion: uint64(time.Now().Unix()),
-			NetworkType:    "-",
+			NetworkType:    "IN",
 			AddressType:    "IP4",
 			UnicastAddress: "0.0.0.0",
 		},
@@ -91,7 +91,7 @@ func NewJSEPSessionDescription(identity bool) (*SessionDescription, error) {
 	}
 
 	if identity {
-		d.WithPropertyAttribute("identity")
+		d.WithPropertyAttribute(AttrKeyIdentity)
 	}
 
 	return d, nil
@@ -127,10 +127,10 @@ func NewJSEPMediaDescription(codecType string, _ []string) MediaDescription {
 		MediaName: MediaName{
 			Media:  codecType,
 			Port:   RangedPort{Value: 9},
-			Protos: []string{"UDP", "TLS", "RTP", "SAVP"},
+			Protos: []string{"UDP", "TLS", "RTP", "SAVPF"},
 		},
 		ConnectionInformation: ConnectionInformation{
-			NetworkType: "-",
+			NetworkType: "IN",
 			AddressType: "IP4",
 			Address: Address{
 				Address: "0.0.0.0",
@@ -170,7 +170,6 @@ func (d *MediaDescription) WithCodec(payloadType uint8, name string, clockrate u
 	if channels > 0 {
 		rtpmap += fmt.Sprintf("/%d", channels)
 	}
-	// TODO
 	d.WithValueAttribute("rtpmap", rtpmap)
 	if fmtp != "" {
 		d.WithValueAttribute("fmtp", fmt.Sprintf("%d %s", payloadType, fmtp))
@@ -195,7 +194,7 @@ func (d *MediaDescription) WithCandidate(value string) *MediaDescription {
 
 // WithExtMap adds an extmap to the media description
 func (d *MediaDescription) WithExtMap(e ExtMap) *MediaDescription {
-	return d.WithPropertyAttribute(string(e.Marshal()))
+	return d.WithPropertyAttribute(e.Marshal())
 }
 
 // WithTransportCCExtMap adds an extmap to the media description
