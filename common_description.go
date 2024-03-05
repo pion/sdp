@@ -5,7 +5,6 @@ package sdp
 
 import (
 	"strconv"
-	"strings"
 )
 
 // Information describes the "i=" field which provides textual information
@@ -13,7 +12,11 @@ import (
 type Information string
 
 func (i Information) String() string {
-	return string(i)
+	return stringFromMarshal(i.marshalInto, i.marshalSize)
+}
+
+func (i Information) marshalInto(b []byte) []byte {
+	return append(b, i...)
 }
 
 func (i Information) marshalSize() (size int) {
@@ -29,11 +32,19 @@ type ConnectionInformation struct {
 }
 
 func (c ConnectionInformation) String() string {
-	parts := []string{c.NetworkType, c.AddressType}
+	return stringFromMarshal(c.marshalInto, c.marshalSize)
+}
+
+func (c ConnectionInformation) marshalInto(b []byte) []byte {
+	b = append(append(b, c.NetworkType...), ' ')
+	b = append(b, c.AddressType...)
+
 	if c.Address != nil {
-		parts = append(parts, c.Address.String())
+		b = append(b, ' ')
+		b = c.Address.marshalInto(b)
 	}
-	return strings.Join(parts, " ")
+
+	return b
 }
 
 func (c ConnectionInformation) marshalSize() (size int) {
@@ -54,17 +65,21 @@ type Address struct {
 }
 
 func (c *Address) String() string {
-	var parts []string
-	parts = append(parts, c.Address)
+	return stringFromMarshal(c.marshalInto, c.marshalSize)
+}
+
+func (c *Address) marshalInto(b []byte) []byte {
+	b = append(b, c.Address...)
 	if c.TTL != nil {
-		parts = append(parts, strconv.Itoa(*c.TTL))
+		b = append(b, '/')
+		b = strconv.AppendInt(b, int64(*c.TTL), 10)
 	}
-
 	if c.Range != nil {
-		parts = append(parts, strconv.Itoa(*c.Range))
+		b = append(b, '/')
+		b = strconv.AppendInt(b, int64(*c.Range), 10)
 	}
 
-	return strings.Join(parts, "/")
+	return b
 }
 
 func (c Address) marshalSize() (size int) {
@@ -88,12 +103,15 @@ type Bandwidth struct {
 }
 
 func (b Bandwidth) String() string {
-	var output string
+	return stringFromMarshal(b.marshalInto, b.marshalSize)
+}
+
+func (b Bandwidth) marshalInto(d []byte) []byte {
 	if b.Experimental {
-		output += "X-"
+		d = append(d, "X-"...)
 	}
-	output += b.Type + ":" + strconv.FormatUint(b.Bandwidth, 10)
-	return output
+	d = append(append(d, b.Type...), ':')
+	return strconv.AppendUint(d, b.Bandwidth, 10)
 }
 
 func (b Bandwidth) marshalSize() (size int) {
@@ -109,11 +127,15 @@ func (b Bandwidth) marshalSize() (size int) {
 type EncryptionKey string
 
 func (e EncryptionKey) String() string {
-	return string(e)
+	return stringFromMarshal(e.marshalInto, e.marshalSize)
+}
+
+func (e EncryptionKey) marshalInto(b []byte) []byte {
+	return append(b, e...)
 }
 
 func (e EncryptionKey) marshalSize() (size int) {
-	return len(e.String())
+	return len(e)
 }
 
 // Attribute describes the "a=" field which represents the primary means for
@@ -139,11 +161,16 @@ func NewAttribute(key, value string) Attribute {
 }
 
 func (a Attribute) String() string {
-	output := a.Key
+	return stringFromMarshal(a.marshalInto, a.marshalSize)
+}
+
+func (a Attribute) marshalInto(b []byte) []byte {
+	b = append(b, a.Key...)
 	if len(a.Value) > 0 {
-		output += ":" + a.Value
+		b = append(append(b, ':'), a.Value...)
 	}
-	return output
+
+	return b
 }
 
 func (a Attribute) marshalSize() (size int) {

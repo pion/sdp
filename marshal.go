@@ -3,10 +3,6 @@
 
 package sdp
 
-import (
-	"strings"
-)
-
 // Marshal takes a SDP struct to text
 // https://tools.ietf.org/html/rfc4566#section-5
 // Session description
@@ -44,81 +40,83 @@ import (
 func (s *SessionDescription) Marshal() ([]byte, error) {
 	m := make(marshaller, 0, s.MarshalSize())
 
-	m.addKeyValue("v=", s.Version.String())
-	m.addKeyValue("o=", s.Origin.String())
-	m.addKeyValue("s=", s.SessionName.String())
+	m.addKeyValue("v=", s.Version.marshalInto)
+	m.addKeyValue("o=", s.Origin.marshalInto)
+	m.addKeyValue("s=", s.SessionName.marshalInto)
 
 	if s.SessionInformation != nil {
-		m.addKeyValue("i=", s.SessionInformation.String())
+		m.addKeyValue("i=", s.SessionInformation.marshalInto)
 	}
 
 	if s.URI != nil {
-		m.addKeyValue("u=", s.URI.String())
+		m = append(m, "u="...)
+		m = append(m, s.URI.String()...)
+		m = append(m, "\r\n"...)
 	}
 
 	if s.EmailAddress != nil {
-		m.addKeyValue("e=", s.EmailAddress.String())
+		m.addKeyValue("e=", s.EmailAddress.marshalInto)
 	}
 
 	if s.PhoneNumber != nil {
-		m.addKeyValue("p=", s.PhoneNumber.String())
+		m.addKeyValue("p=", s.PhoneNumber.marshalInto)
 	}
 
 	if s.ConnectionInformation != nil {
-		m.addKeyValue("c=", s.ConnectionInformation.String())
+		m.addKeyValue("c=", s.ConnectionInformation.marshalInto)
 	}
 
 	for _, b := range s.Bandwidth {
-		m.addKeyValue("b=", b.String())
+		m.addKeyValue("b=", b.marshalInto)
 	}
 
 	for _, td := range s.TimeDescriptions {
-		m.addKeyValue("t=", td.Timing.String())
+		m.addKeyValue("t=", td.Timing.marshalInto)
 		for _, r := range td.RepeatTimes {
-			m.addKeyValue("r=", r.String())
+			m.addKeyValue("r=", r.marshalInto)
 		}
 	}
 
 	if len(s.TimeZones) > 0 {
-		var b strings.Builder
+		m = append(m, "z="...)
 		for i, z := range s.TimeZones {
 			if i > 0 {
-				b.WriteString(" ")
+				m = append(m, ' ')
 			}
-			b.WriteString(z.String())
+			m = z.marshalInto(m)
 		}
-		m.addKeyValue("z=", b.String())
+		m = append(m, "\r\n"...)
 	}
 
 	if s.EncryptionKey != nil {
-		m.addKeyValue("k=", s.EncryptionKey.String())
+		m.addKeyValue("k=", s.EncryptionKey.marshalInto)
 	}
 
 	for _, a := range s.Attributes {
-		m.addKeyValue("a=", a.String())
+		m.addKeyValue("a=", a.marshalInto)
 	}
 
 	for _, md := range s.MediaDescriptions {
-		m.addKeyValue("m=", md.MediaName.String())
+		m.addKeyValue("m=", md.MediaName.marshalInto)
 
 		if md.MediaTitle != nil {
-			m.addKeyValue("i=", md.MediaTitle.String())
+			m.addKeyValue("i=", md.MediaTitle.marshalInto)
 		}
 
 		if md.ConnectionInformation != nil {
-			m.addKeyValue("c=", md.ConnectionInformation.String())
+			m.addKeyValue("c=", md.ConnectionInformation.marshalInto)
 		}
 
 		for _, b := range md.Bandwidth {
-			m.addKeyValue("b=", b.String())
+			m.addKeyValue("b=", b.marshalInto)
 		}
 
 		if md.EncryptionKey != nil {
-			m.addKeyValue("k=", md.EncryptionKey.String())
+			m.addKeyValue("k=", md.EncryptionKey.marshalInto)
 		}
 
 		for _, a := range md.Attributes {
-			m.addKeyValue("a=", a.String())
+			m.addKeyValue("a=", a.marshalInto)
 		}
 	}
 
@@ -212,13 +210,9 @@ func (s *SessionDescription) MarshalSize() (marshalSize int) {
 // marshaller contains state during marshaling.
 type marshaller []byte
 
-func (m *marshaller) addKeyValue(key, value string) {
-	if value == "" {
-		return
-	}
-
+func (m *marshaller) addKeyValue(key string, value func([]byte) []byte) {
 	*m = append(*m, key...)
-	*m = append(*m, value...)
+	*m = value(*m)
 	*m = append(*m, "\r\n"...)
 }
 
@@ -239,4 +233,8 @@ func lenInt(i int64) (count int) {
 		return lenUint(uint64(-i)) + 1
 	}
 	return lenUint(uint64(i))
+}
+
+func stringFromMarshal(marshalFunc func([]byte) []byte, sizeFunc func() int) string {
+	return string(marshalFunc(make([]byte, 0, sizeFunc())))
 }
