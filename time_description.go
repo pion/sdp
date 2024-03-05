@@ -34,6 +34,10 @@ func (t Timing) String() string {
 	return output
 }
 
+func (t Timing) marshalSize() (size int) {
+	return lenUint(t.StartTime) + 1 + lenUint(t.StopTime)
+}
+
 // RepeatTime describes the "r=" fields of the session description which
 // represents the intervals and durations for repeated scheduled sessions.
 type RepeatTime struct {
@@ -51,4 +55,14 @@ func (r RepeatTime) String() string {
 	}
 
 	return strings.Join(fields, " ")
+}
+
+func (r RepeatTime) marshalSize() (size int) {
+	size = lenInt(r.Interval)
+	size += 1 + lenInt(r.Duration)
+	for _, o := range r.Offsets {
+		size += 1 + lenInt(o)
+	}
+
+	return
 }

@@ -65,6 +65,15 @@ func (p *RangedPort) String() string {
 	return output
 }
 
+func (p RangedPort) marshalSize() (size int) {
+	size = lenInt(int64(p.Value))
+	if p.Range != nil {
+		size += 1 + lenInt(int64(*p.Range))
+	}
+
+	return
+}
+
 // MediaName describes the "m=" field storage structure.
 type MediaName struct {
 	Media   string
@@ -80,4 +89,28 @@ func (m MediaName) String() string {
 		strings.Join(m.Protos, "/"),
 		strings.Join(m.Formats, " "),
 	}, " ")
+}
+
+func (m MediaName) marshalSize() (size int) {
+	size = len(m.Media)
+
+	size += 1 + m.Port.marshalSize()
+
+	for i, p := range m.Protos {
+		if i != len(m.Protos) {
+			size++
+		}
+
+		size += len(p)
+	}
+
+	for i, f := range m.Formats {
+		if i != len(m.Formats) {
+			size++
+		}
+
+		size += len(f)
+	}
+
+	return size
 }
