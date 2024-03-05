@@ -88,6 +88,10 @@ func (v Version) String() string {
 	return strconv.Itoa(int(v))
 }
 
+func (v Version) marshalSize() (size int) {
+	return lenInt(int64(v))
+}
+
 // Origin defines the structure for the "o=" field which provides the
 // originator of the session plus a session identifier and version number.
 type Origin struct {
@@ -111,12 +115,26 @@ func (o Origin) String() string {
 	)
 }
 
+func (o Origin) marshalSize() (size int) {
+	return len(o.Username) +
+		lenUint(o.SessionID) +
+		lenUint(o.SessionVersion) +
+		len(o.NetworkType) +
+		len(o.AddressType) +
+		len(o.UnicastAddress) +
+		5
+}
+
 // SessionName describes a structured representations for the "s=" field
 // and is the textual session name.
 type SessionName string
 
 func (s SessionName) String() string {
 	return string(s)
+}
+
+func (s SessionName) marshalSize() (size int) {
+	return len(s)
 }
 
 // EmailAddress describes a structured representations for the "e=" line
@@ -128,6 +146,10 @@ func (e EmailAddress) String() string {
 	return string(e)
 }
 
+func (e EmailAddress) marshalSize() (size int) {
+	return len(e)
+}
+
 // PhoneNumber describes a structured representations for the "p=" line
 // specify phone contact information for the person responsible for the
 // conference.
@@ -135,6 +157,10 @@ type PhoneNumber string
 
 func (p PhoneNumber) String() string {
 	return string(p)
+}
+
+func (p PhoneNumber) marshalSize() (size int) {
+	return len(p)
 }
 
 // TimeZone defines the structured object for "z=" line which describes
@@ -146,4 +172,8 @@ type TimeZone struct {
 
 func (z TimeZone) String() string {
 	return strconv.FormatUint(z.AdjustmentTime, 10) + " " + strconv.FormatInt(z.Offset, 10)
+}
+
+func (z TimeZone) marshalSize() (size int) {
+	return lenUint(z.AdjustmentTime) + 1 + lenInt(z.Offset)
 }

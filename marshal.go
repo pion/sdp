@@ -42,7 +42,7 @@ import (
 //	k=* (encryption key)
 //	a=* (zero or more media attribute lines)
 func (s *SessionDescription) Marshal() ([]byte, error) {
-	m := make(marshaller, 0, 1024)
+	m := make(marshaller, 0, s.MarshalSize())
 
 	m.addKeyValue("v=", s.Version.String())
 	m.addKeyValue("o=", s.Origin.String())
@@ -122,7 +122,91 @@ func (s *SessionDescription) Marshal() ([]byte, error) {
 		}
 	}
 
-	return m.bytes(), nil
+	return m, nil
+}
+
+// `$type=` and CRLF size
+const lineBaseSize = 4
+
+// MarshalSize returns the size of the SessionDescription once marshaled.
+func (s *SessionDescription) MarshalSize() (marshalSize int) {
+	marshalSize += lineBaseSize + s.Version.marshalSize()
+	marshalSize += lineBaseSize + s.Origin.marshalSize()
+	marshalSize += lineBaseSize + s.SessionName.marshalSize()
+
+	if s.SessionInformation != nil {
+		marshalSize += lineBaseSize + s.SessionInformation.marshalSize()
+	}
+
+	if s.URI != nil {
+		marshalSize += lineBaseSize + len(s.URI.String())
+	}
+
+	if s.EmailAddress != nil {
+		marshalSize += lineBaseSize + s.EmailAddress.marshalSize()
+	}
+
+	if s.PhoneNumber != nil {
+		marshalSize += lineBaseSize + s.PhoneNumber.marshalSize()
+	}
+
+	if s.ConnectionInformation != nil {
+		marshalSize += lineBaseSize + s.ConnectionInformation.marshalSize()
+	}
+
+	for _, b := range s.Bandwidth {
+		marshalSize += lineBaseSize + b.marshalSize()
+	}
+
+	for _, td := range s.TimeDescriptions {
+		marshalSize += lineBaseSize + td.Timing.marshalSize()
+		for _, r := range td.RepeatTimes {
+			marshalSize += lineBaseSize + r.marshalSize()
+		}
+	}
+
+	if len(s.TimeZones) > 0 {
+		marshalSize += lineBaseSize
+
+		for i, z := range s.TimeZones {
+			if i > 0 {
+				marshalSize++
+			}
+			marshalSize += z.marshalSize()
+		}
+	}
+
+	if s.EncryptionKey != nil {
+		marshalSize += lineBaseSize + s.EncryptionKey.marshalSize()
+	}
+
+	for _, a := range s.Attributes {
+		marshalSize += lineBaseSize + a.marshalSize()
+	}
+
+	for _, md := range s.MediaDescriptions {
+		marshalSize += lineBaseSize + md.MediaName.marshalSize()
+		if md.MediaTitle != nil {
+			marshalSize += lineBaseSize + md.MediaTitle.marshalSize()
+		}
+		if md.ConnectionInformation != nil {
+			marshalSize += lineBaseSize + md.ConnectionInformation.marshalSize()
+		}
+
+		for _, b := range md.Bandwidth {
+			marshalSize += lineBaseSize + b.marshalSize()
+		}
+
+		if md.EncryptionKey != nil {
+			marshalSize += lineBaseSize + md.EncryptionKey.marshalSize()
+		}
+
+		for _, a := range md.Attributes {
+			marshalSize += lineBaseSize + a.marshalSize()
+		}
+	}
+
+	return marshalSize
 }
 
 // marshaller contains state during marshaling.
@@ -132,11 +216,27 @@ func (m *marshaller) addKeyValue(key, value string) {
 	if value == "" {
 		return
 	}
+
 	*m = append(*m, key...)
 	*m = append(*m, value...)
 	*m = append(*m, "\r\n"...)
 }
 
-func (m *marshaller) bytes() []byte {
-	return *m
+func lenUint(i uint64) (count int) {
+	if i == 0 {
+		return 1
+	}
+
+	for i != 0 {
+		i /= 10
+		count++
+	}
+	return
+}
+
+func lenInt(i int64) (count int) {
+	if i < 0 {
+		return lenUint(uint64(-i)) + 1
+	}
+	return lenUint(uint64(i))
 }
