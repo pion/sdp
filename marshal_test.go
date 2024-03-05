@@ -9,6 +9,7 @@ import (
 	"testing"
 )
 
+// nolint: goconst
 const (
 	CanonicalMarshalSDP = "v=0\r\n" +
 		"o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5\r\n" +
@@ -37,6 +38,7 @@ const (
 		"a=rtpmap:99 h263-1998/90000\r\n"
 )
 
+// nolint: goconst
 func TestMarshalCanonical(t *testing.T) {
 	sd := &SessionDescription{
 		Version: 0,

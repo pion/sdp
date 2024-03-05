@@ -4,7 +4,6 @@
 package sdp
 
 import (
-	"fmt"
 	"net/url"
 	"strconv"
 )
@@ -85,7 +84,11 @@ func (s *SessionDescription) Attribute(key string) (string, bool) {
 type Version int
 
 func (v Version) String() string {
-	return strconv.Itoa(int(v))
+	return stringFromMarshal(v.marshalInto, v.marshalSize)
+}
+
+func (v Version) marshalInto(b []byte) []byte {
+	return strconv.AppendInt(b, int64(v), 10)
 }
 
 func (v Version) marshalSize() (size int) {
@@ -104,15 +107,16 @@ type Origin struct {
 }
 
 func (o Origin) String() string {
-	return fmt.Sprintf(
-		"%v %d %d %v %v %v",
-		o.Username,
-		o.SessionID,
-		o.SessionVersion,
-		o.NetworkType,
-		o.AddressType,
-		o.UnicastAddress,
-	)
+	return stringFromMarshal(o.marshalInto, o.marshalSize)
+}
+
+func (o Origin) marshalInto(b []byte) []byte {
+	b = append(append(b, o.Username...), ' ')
+	b = append(strconv.AppendUint(b, o.SessionID, 10), ' ')
+	b = append(strconv.AppendUint(b, o.SessionVersion, 10), ' ')
+	b = append(append(b, o.NetworkType...), ' ')
+	b = append(append(b, o.AddressType...), ' ')
+	return append(b, o.UnicastAddress...)
 }
 
 func (o Origin) marshalSize() (size int) {
@@ -130,7 +134,11 @@ func (o Origin) marshalSize() (size int) {
 type SessionName string
 
 func (s SessionName) String() string {
-	return string(s)
+	return stringFromMarshal(s.marshalInto, s.marshalSize)
+}
+
+func (s SessionName) marshalInto(b []byte) []byte {
+	return append(b, s...)
 }
 
 func (s SessionName) marshalSize() (size int) {
@@ -143,7 +151,11 @@ func (s SessionName) marshalSize() (size int) {
 type EmailAddress string
 
 func (e EmailAddress) String() string {
-	return string(e)
+	return stringFromMarshal(e.marshalInto, e.marshalSize)
+}
+
+func (e EmailAddress) marshalInto(b []byte) []byte {
+	return append(b, e...)
 }
 
 func (e EmailAddress) marshalSize() (size int) {
@@ -156,7 +168,11 @@ func (e EmailAddress) marshalSize() (size int) {
 type PhoneNumber string
 
 func (p PhoneNumber) String() string {
-	return string(p)
+	return stringFromMarshal(p.marshalInto, p.marshalSize)
+}
+
+func (p PhoneNumber) marshalInto(b []byte) []byte {
+	return append(b, p...)
 }
 
 func (p PhoneNumber) marshalSize() (size int) {
@@ -171,7 +187,13 @@ type TimeZone struct {
 }
 
 func (z TimeZone) String() string {
-	return strconv.FormatUint(z.AdjustmentTime, 10) + " " + strconv.FormatInt(z.Offset, 10)
+	return stringFromMarshal(z.marshalInto, z.marshalSize)
+}
+
+func (z TimeZone) marshalInto(b []byte) []byte {
+	b = strconv.AppendUint(b, z.AdjustmentTime, 10)
+	b = append(b, ' ')
+	return strconv.AppendInt(b, z.Offset, 10)
 }
 
 func (z TimeZone) marshalSize() (size int) {
