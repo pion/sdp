@@ -303,7 +303,7 @@ func TestRoundTrip(t *testing.T) {
 		t.Run(test.Name, func(t *testing.T) {
 			sd := &SessionDescription{}
 
-			err := sd.Unmarshal([]byte(test.SDP))
+			err := sd.UnmarshalString(test.SDP)
 			if got, want := err, error(nil); !errors.Is(got, want) {
 				t.Fatalf("Unmarshal:\nerr=%v\nwant=%v", got, want)
 			}
@@ -327,7 +327,7 @@ func TestRoundTrip(t *testing.T) {
 
 func TestUnmarshalRepeatTimes(t *testing.T) {
 	sd := &SessionDescription{}
-	if err := sd.Unmarshal([]byte(RepeatTimesSDP)); err != nil {
+	if err := sd.UnmarshalString(RepeatTimesSDP); err != nil {
 		t.Errorf("error: %v", err)
 	}
 
@@ -339,7 +339,7 @@ func TestUnmarshalRepeatTimes(t *testing.T) {
 		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", RepeatTimesSDPExpected, string(actual))
 	}
 
-	err = sd.Unmarshal([]byte(TimingSDP + "r=\r\n"))
+	err = sd.UnmarshalString(TimingSDP + "r=\r\n")
 	if got, want := err, errSDPInvalidValue; !errors.Is(got, want) {
 		t.Fatalf("Marshal(): err=%v, want %v", got, want)
 	}
@@ -347,7 +347,7 @@ func TestUnmarshalRepeatTimes(t *testing.T) {
 
 func TestUnmarshalTimeZones(t *testing.T) {
 	sd := &SessionDescription{}
-	if err := sd.Unmarshal([]byte(TimeZonesSDP)); err != nil {
+	if err := sd.UnmarshalString(TimeZonesSDP); err != nil {
 		t.Errorf("error: %v", err)
 	}
 
@@ -363,7 +363,7 @@ func TestUnmarshalTimeZones(t *testing.T) {
 func TestUnmarshalNonNilAddress(t *testing.T) {
 	in := "v=0\r\no=0 0 0 IN IP4 0\r\ns=0\r\nc=IN IP4\r\nt=0 0\r\n"
 	var sd SessionDescription
-	err := sd.Unmarshal([]byte(in))
+	err := sd.UnmarshalString(in)
 	if err != nil {
 		t.Fatalf("failed to unmarshal %q", in)
 	}
@@ -378,10 +378,9 @@ func TestUnmarshalNonNilAddress(t *testing.T) {
 
 func BenchmarkUnmarshal(b *testing.B) {
 	b.ReportAllocs()
-	raw := []byte(CanonicalUnmarshalSDP)
 	for i := 0; i < b.N; i++ {
 		var sd SessionDescription
-		err := sd.Unmarshal(raw)
+		err := sd.UnmarshalString(CanonicalUnmarshalSDP)
 		if err != nil {
 			b.Fatal(err)
 		}

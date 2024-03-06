@@ -6,12 +6,12 @@ package sdp
 import "testing"
 
 func FuzzUnmarshal(f *testing.F) {
-	f.Add([]byte{})
-	f.Add([]byte(CanonicalUnmarshalSDP))
-	f.Fuzz(func(t *testing.T, data []byte) {
+	f.Add("")
+	f.Add(CanonicalUnmarshalSDP)
+	f.Fuzz(func(t *testing.T, data string) {
 		// Check that unmarshalling any byte slice does not panic.
 		var sd SessionDescription
-		if err := sd.Unmarshal(data); err != nil {
+		if err := sd.UnmarshalString(data); err != nil {
 			return
 		}
 		// Check that we can marshal anything we unmarshalled.

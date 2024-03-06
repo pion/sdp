@@ -25,12 +25,12 @@ func (e syntaxError) Error() string {
 }
 
 type baseLexer struct {
-	value []byte
+	value string
 	pos   int
 }
 
 func (l baseLexer) syntaxError() error {
-	return syntaxError{s: string(l.value), i: l.pos - 1}
+	return syntaxError{s: l.value, i: l.pos - 1}
 }
 
 func (l *baseLexer) unreadByte() error {
@@ -157,7 +157,7 @@ func (l *baseLexer) readField() (string, error) {
 			break
 		}
 	}
-	return string(l.value[start:stop]), nil
+	return l.value[start:stop], nil
 }
 
 // Returns symbols until line end
@@ -173,7 +173,7 @@ func (l *baseLexer) readLine() (string, error) {
 			trim++
 		}
 		if ch == '\n' {
-			return string(l.value[start : l.pos-trim]), nil
+			return l.value[start : l.pos-trim], nil
 		}
 	}
 }
