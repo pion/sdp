@@ -178,45 +178,27 @@ func (l *baseLexer) readLine() (string, error) {
 	}
 }
 
-func (l *baseLexer) readString(until byte) (string, error) {
-	start := l.pos
+func (l *baseLexer) readType() (byte, error) {
 	for {
-		ch, err := l.readByte()
+		firstByte, err := l.readByte()
 		if err != nil {
-			return "", err
-		}
-		if ch == until {
-			return string(l.value[start:l.pos]), nil
-		}
-	}
-}
-
-func (l *baseLexer) readType() (string, error) {
-	for {
-		b, err := l.readByte()
-		if err != nil {
-			return "", err
+			return 0, err
 		}
 
-		if isNewline(b) {
+		if isNewline(firstByte) {
 			continue
 		}
 
-		err = l.unreadByte()
+		secondByte, err := l.readByte()
 		if err != nil {
-			return "", err
+			return 0, err
 		}
 
-		key, err := l.readString('=')
-		if err != nil {
-			return key, err
+		if secondByte != '=' {
+			return firstByte, l.syntaxError()
 		}
 
-		if len(key) == 2 {
-			return key, nil
-		}
-
-		return key, l.syntaxError()
+		return firstByte, nil
 	}
 }
 
