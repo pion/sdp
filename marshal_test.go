@@ -177,7 +177,7 @@ func TestMarshalCanonical(t *testing.T) {
 func BenchmarkMarshal(b *testing.B) {
 	b.ReportAllocs()
 	var sd SessionDescription
-	err := sd.Unmarshal([]byte(CanonicalUnmarshalSDP))
+	err := sd.UnmarshalString(CanonicalUnmarshalSDP)
 	if err != nil {
 		b.Fatal(err)
 	}

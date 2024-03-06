@@ -16,7 +16,7 @@ func TestLexer(t *testing.T) {
 			"with linebreak":   "aaa \n",
 			"with linebreak 2": "aaa \r\n",
 		} {
-			l := &baseLexer{value: []byte(value)}
+			l := &baseLexer{value: value}
 			field, err := l.readField()
 			if err != nil {
 				t.Fatal(err)
@@ -28,7 +28,7 @@ func TestLexer(t *testing.T) {
 	})
 
 	t.Run("syntax error", func(t *testing.T) {
-		l := &baseLexer{value: []byte("12NaN")}
+		l := &baseLexer{value: "12NaN"}
 		_, err := l.readUint64Field()
 		if err != nil {
 			fmt.Println("error message:", err.Error())
@@ -38,7 +38,7 @@ func TestLexer(t *testing.T) {
 	})
 
 	t.Run("many fields", func(t *testing.T) {
-		l := &baseLexer{value: []byte("aaa  123\nf1 f2\nlast")}
+		l := &baseLexer{value: "aaa  123\nf1 f2\nlast"}
 
 		t.Run("first line", func(t *testing.T) {
 			field, err := l.readField()

@@ -18,7 +18,7 @@ var (
 	errSDPInvalidPortValue    = errors.New("sdp: invalid port value")
 )
 
-// Unmarshal is the primary function that deserializes the session description
+// UnmarshalString is the primary function that deserializes the session description
 // message and stores it inside of a structured SessionDescription object.
 //
 // The States Transition Table describes the computation flow between functions
@@ -99,7 +99,7 @@ var (
 // |   s15  |    |    14 |    |     | 15 |     |   |    | 12 |   |   |     |   |   |    |   |    |
 // |   s16  |    |    14 |    |     |    |  15 |   |    | 12 |   |   |     |   |   |    |   |    |
 // +--------+----+-------+----+-----+----+-----+---+----+----+---+---+-----+---+---+----+---+----+
-func (s *SessionDescription) Unmarshal(value []byte) error {
+func (s *SessionDescription) UnmarshalString(value string) error {
 	l := new(lexer)
 	l.desc = s
 	l.value = value
@@ -111,6 +111,12 @@ func (s *SessionDescription) Unmarshal(value []byte) error {
 		}
 	}
 	return nil
+}
+
+// Unmarshal converts the value into a []byte and then calls UnmarshalString.
+// Callers should use the more performant UnmarshalString
+func (s *SessionDescription) Unmarshal(value []byte) error {
+	return s.UnmarshalString(string(value))
 }
 
 func s1(l *lexer) (stateFn, error) {
