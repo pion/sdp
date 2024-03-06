@@ -315,11 +315,11 @@ type lexer struct {
 	baseLexer
 }
 
-type keyToState func(key string) stateFn
+type keyToState func(key byte) stateFn
 
 func (l *lexer) handleType(fn keyToState) (stateFn, error) {
 	key, err := l.readType()
-	if errors.Is(err, io.EOF) && key == "" {
+	if errors.Is(err, io.EOF) && key == 0 {
 		return nil, nil //nolint:nilnil
 	} else if err != nil {
 		return nil, err

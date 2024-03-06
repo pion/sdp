@@ -114,8 +114,8 @@ func (s *SessionDescription) Unmarshal(value []byte) error {
 }
 
 func s1(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		if key == "v=" {
+	return l.handleType(func(key byte) stateFn {
+		if key == 'v' {
 			return unmarshalProtocolVersion
 		}
 		return nil
@@ -123,8 +123,8 @@ func s1(l *lexer) (stateFn, error) {
 }
 
 func s2(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		if key == "o=" {
+	return l.handleType(func(key byte) stateFn {
+		if key == 'o' {
 			return unmarshalOrigin
 		}
 		return nil
@@ -132,8 +132,8 @@ func s2(l *lexer) (stateFn, error) {
 }
 
 func s3(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
-		if key == "s=" {
+	return l.handleType(func(key byte) stateFn {
+		if key == 's' {
 			return unmarshalSessionName
 		}
 		return nil
@@ -141,21 +141,21 @@ func s3(l *lexer) (stateFn, error) {
 }
 
 func s4(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
+	return l.handleType(func(key byte) stateFn {
 		switch key {
-		case "i=":
+		case 'i':
 			return unmarshalSessionInformation
-		case "u=":
+		case 'u':
 			return unmarshalURI
-		case "e=":
+		case 'e':
 			return unmarshalEmail
-		case "p=":
+		case 'p':
 			return unmarshalPhone
-		case "c=":
+		case 'c':
 			return unmarshalSessionConnectionInformation
-		case "b=":
+		case 'b':
 			return unmarshalSessionBandwidth
-		case "t=":
+		case 't':
 			return unmarshalTiming
 		}
 		return nil
@@ -163,11 +163,11 @@ func s4(l *lexer) (stateFn, error) {
 }
 
 func s5(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
+	return l.handleType(func(key byte) stateFn {
 		switch key {
-		case "b=":
+		case 'b':
 			return unmarshalSessionBandwidth
-		case "t=":
+		case 't':
 			return unmarshalTiming
 		}
 		return nil
@@ -175,15 +175,15 @@ func s5(l *lexer) (stateFn, error) {
 }
 
 func s6(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
+	return l.handleType(func(key byte) stateFn {
 		switch key {
-		case "p=":
+		case 'p':
 			return unmarshalPhone
-		case "c=":
+		case 'c':
 			return unmarshalSessionConnectionInformation
-		case "b=":
+		case 'b':
 			return unmarshalSessionBandwidth
-		case "t=":
+		case 't':
 			return unmarshalTiming
 		}
 		return nil
@@ -191,19 +191,19 @@ func s6(l *lexer) (stateFn, error) {
 }
 
 func s7(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
+	return l.handleType(func(key byte) stateFn {
 		switch key {
-		case "u=":
+		case 'u':
 			return unmarshalURI
-		case "e=":
+		case 'e':
 			return unmarshalEmail
-		case "p=":
+		case 'p':
 			return unmarshalPhone
-		case "c=":
+		case 'c':
 			return unmarshalSessionConnectionInformation
-		case "b=":
+		case 'b':
 			return unmarshalSessionBandwidth
-		case "t=":
+		case 't':
 			return unmarshalTiming
 		}
 		return nil
@@ -211,13 +211,13 @@ func s7(l *lexer) (stateFn, error) {
 }
 
 func s8(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
+	return l.handleType(func(key byte) stateFn {
 		switch key {
-		case "c=":
+		case 'c':
 			return unmarshalSessionConnectionInformation
-		case "b=":
+		case 'b':
 			return unmarshalSessionBandwidth
-		case "t=":
+		case 't':
 			return unmarshalTiming
 		}
 		return nil
@@ -225,19 +225,19 @@ func s8(l *lexer) (stateFn, error) {
 }
 
 func s9(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
+	return l.handleType(func(key byte) stateFn {
 		switch key {
-		case "z=":
+		case 'z':
 			return unmarshalTimeZones
-		case "k=":
+		case 'k':
 			return unmarshalSessionEncryptionKey
-		case "a=":
+		case 'a':
 			return unmarshalSessionAttribute
-		case "r=":
+		case 'r':
 			return unmarshalRepeatTimes
-		case "t=":
+		case 't':
 			return unmarshalTiming
-		case "m=":
+		case 'm':
 			return unmarshalMediaDescription
 		}
 		return nil
@@ -245,17 +245,17 @@ func s9(l *lexer) (stateFn, error) {
 }
 
 func s10(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
+	return l.handleType(func(key byte) stateFn {
 		switch key {
-		case "e=":
+		case 'e':
 			return unmarshalEmail
-		case "p=":
+		case 'p':
 			return unmarshalPhone
-		case "c=":
+		case 'c':
 			return unmarshalSessionConnectionInformation
-		case "b=":
+		case 'b':
 			return unmarshalSessionBandwidth
-		case "t=":
+		case 't':
 			return unmarshalTiming
 		}
 		return nil
@@ -263,11 +263,11 @@ func s10(l *lexer) (stateFn, error) {
 }
 
 func s11(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
+	return l.handleType(func(key byte) stateFn {
 		switch key {
-		case "a=":
+		case 'a':
 			return unmarshalSessionAttribute
-		case "m=":
+		case 'm':
 			return unmarshalMediaDescription
 		}
 		return nil
@@ -275,19 +275,19 @@ func s11(l *lexer) (stateFn, error) {
 }
 
 func s12(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
+	return l.handleType(func(key byte) stateFn {
 		switch key {
-		case "a=":
+		case 'a':
 			return unmarshalMediaAttribute
-		case "k=":
+		case 'k':
 			return unmarshalMediaEncryptionKey
-		case "b=":
+		case 'b':
 			return unmarshalMediaBandwidth
-		case "c=":
+		case 'c':
 			return unmarshalMediaConnectionInformation
-		case "i=":
+		case 'i':
 			return unmarshalMediaTitle
-		case "m=":
+		case 'm':
 			return unmarshalMediaDescription
 		}
 		return nil
@@ -295,13 +295,13 @@ func s12(l *lexer) (stateFn, error) {
 }
 
 func s13(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
+	return l.handleType(func(key byte) stateFn {
 		switch key {
-		case "a=":
+		case 'a':
 			return unmarshalSessionAttribute
-		case "k=":
+		case 'k':
 			return unmarshalSessionEncryptionKey
-		case "m=":
+		case 'm':
 			return unmarshalMediaDescription
 		}
 		return nil
@@ -309,23 +309,23 @@ func s13(l *lexer) (stateFn, error) {
 }
 
 func s14(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
+	return l.handleType(func(key byte) stateFn {
 		switch key {
-		case "a=":
+		case 'a':
 			return unmarshalMediaAttribute
-		case "k=":
+		case 'k':
 			// Non-spec ordering
 			return unmarshalMediaEncryptionKey
-		case "b=":
+		case 'b':
 			// Non-spec ordering
 			return unmarshalMediaBandwidth
-		case "c=":
+		case 'c':
 			// Non-spec ordering
 			return unmarshalMediaConnectionInformation
-		case "i=":
+		case 'i':
 			// Non-spec ordering
 			return unmarshalMediaTitle
-		case "m=":
+		case 'm':
 			return unmarshalMediaDescription
 		}
 		return nil
@@ -333,20 +333,20 @@ func s14(l *lexer) (stateFn, error) {
 }
 
 func s15(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
+	return l.handleType(func(key byte) stateFn {
 		switch key {
-		case "a=":
+		case 'a':
 			return unmarshalMediaAttribute
-		case "k=":
+		case 'k':
 			return unmarshalMediaEncryptionKey
-		case "b=":
+		case 'b':
 			return unmarshalMediaBandwidth
-		case "c=":
+		case 'c':
 			return unmarshalMediaConnectionInformation
-		case "i=":
+		case 'i':
 			// Non-spec ordering
 			return unmarshalMediaTitle
-		case "m=":
+		case 'm':
 			return unmarshalMediaDescription
 		}
 		return nil
@@ -354,20 +354,20 @@ func s15(l *lexer) (stateFn, error) {
 }
 
 func s16(l *lexer) (stateFn, error) {
-	return l.handleType(func(key string) stateFn {
+	return l.handleType(func(key byte) stateFn {
 		switch key {
-		case "a=":
+		case 'a':
 			return unmarshalMediaAttribute
-		case "k=":
+		case 'k':
 			return unmarshalMediaEncryptionKey
-		case "c=":
+		case 'c':
 			return unmarshalMediaConnectionInformation
-		case "b=":
+		case 'b':
 			return unmarshalMediaBandwidth
-		case "i=":
+		case 'i':
 			// Non-spec ordering
 			return unmarshalMediaTitle
-		case "m=":
+		case 'm':
 			return unmarshalMediaDescription
 		}
 		return nil
