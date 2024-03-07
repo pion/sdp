@@ -311,7 +311,8 @@ func (s *SessionDescription) GetPayloadTypeForCodec(wanted Codec) (uint8, error)
 type stateFn func(*lexer) (stateFn, error)
 
 type lexer struct {
-	desc *SessionDescription
+	desc  *SessionDescription
+	cache *unmarshalCache
 	baseLexer
 }
 
