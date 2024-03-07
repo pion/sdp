@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var (
@@ -16,6 +17,14 @@ var (
 	errSDPInvalidNumericValue = errors.New("sdp: invalid numeric value")
 	errSDPInvalidValue        = errors.New("sdp: invalid value")
 	errSDPInvalidPortValue    = errors.New("sdp: invalid port value")
+	errSDPCacheInvalid        = errors.New("sdp: invalid cache")
+
+	//nolint: gochecknoglobals
+	unmarshalCachePool = sync.Pool{
+		New: func() interface{} {
+			return &unmarshalCache{}
+		},
+	}
 )
 
 // UnmarshalString is the primary function that deserializes the session description
@@ -100,9 +109,17 @@ var (
 // |   s16  |    |    14 |    |     |    |  15 |   |    | 12 |   |   |     |   |   |    |   |    |
 // +--------+----+-------+----+-----+----+-----+---+----+----+---+---+-----+---+---+----+---+----+
 func (s *SessionDescription) UnmarshalString(value string) error {
+	var ok bool
 	l := new(lexer)
+	if l.cache, ok = unmarshalCachePool.Get().(*unmarshalCache); !ok {
+		return errSDPCacheInvalid
+	}
+	defer unmarshalCachePool.Put(l.cache)
+
+	l.cache.reset()
 	l.desc = s
 	l.value = value
+
 	for state := s1; state != nil; {
 		var err error
 		state, err = state(l)
@@ -110,6 +127,9 @@ func (s *SessionDescription) UnmarshalString(value string) error {
 			return err
 		}
 	}
+
+	s.Attributes = l.cache.cloneSessionAttributes()
+	populateMediaAttributes(l.cache, l.desc)
 	return nil
 }
 
@@ -730,18 +750,19 @@ func unmarshalSessionAttribute(l *lexer) (stateFn, error) {
 	}
 
 	i := strings.IndexRune(value, ':')
-	var a Attribute
+	a := l.cache.getSessionAttribute()
 	if i > 0 {
-		a = NewAttribute(value[:i], value[i+1:])
+		a.Key = value[:i]
+		a.Value = value[i+1:]
 	} else {
-		a = NewPropertyAttribute(value)
+		a.Key = value
 	}
 
-	l.desc.Attributes = append(l.desc.Attributes, a)
 	return s11, nil
 }
 
 func unmarshalMediaDescription(l *lexer) (stateFn, error) {
+	populateMediaAttributes(l.cache, l.desc)
 	var newMediaDesc MediaDescription
 
 	// <media>
@@ -869,15 +890,14 @@ func unmarshalMediaAttribute(l *lexer) (stateFn, error) {
 	}
 
 	i := strings.IndexRune(value, ':')
-	var a Attribute
+	a := l.cache.getMediaAttribute()
 	if i > 0 {
-		a = NewAttribute(value[:i], value[i+1:])
+		a.Key = value[:i]
+		a.Value = value[i+1:]
 	} else {
-		a = NewPropertyAttribute(value)
+		a.Key = value
 	}
 
-	latestMediaDesc := l.desc.MediaDescriptions[len(l.desc.MediaDescriptions)-1]
-	latestMediaDesc.Attributes = append(latestMediaDesc.Attributes, a)
 	return s14, nil
 }
 
@@ -926,4 +946,11 @@ func parsePort(value string) (int, error) {
 	}
 
 	return port, nil
+}
+
+func populateMediaAttributes(c *unmarshalCache, s *SessionDescription) {
+	if len(s.MediaDescriptions) != 0 {
+		lastMediaDesc := s.MediaDescriptions[len(s.MediaDescriptions)-1]
+		lastMediaDesc.Attributes = c.cloneMediaAttributes()
+	}
 }
