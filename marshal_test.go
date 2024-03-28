@@ -172,8 +172,6 @@ func TestMarshalCanonical(t *testing.T) {
 	}
 }
 
-// var sink []byte
-
 func BenchmarkMarshal(b *testing.B) {
 	b.ReportAllocs()
 	var sd SessionDescription
@@ -182,7 +180,6 @@ func BenchmarkMarshal(b *testing.B) {
 		b.Fatal(err)
 	}
 	for i := 0; i < b.N; i++ {
-		// sink, err = sd.Marshal()
 		_, err = sd.Marshal()
 		if err != nil {
 			b.Fatal(err)

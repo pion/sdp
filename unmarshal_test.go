@@ -7,6 +7,8 @@ import (
 	"errors"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -374,6 +376,19 @@ func TestUnmarshalNonNilAddress(t *testing.T) {
 	if string(out) != in {
 		t.Errorf("round trip = %q want %q", out, in)
 	}
+}
+
+func TestUnmarshalZeroValues(t *testing.T) {
+	in := "v=0\r\no=0 0 0 IN IP4 0\r\ns=\r\nt=0 0\r\n"
+	var sd SessionDescription
+	require.NoError(t, sd.UnmarshalString(in))
+
+	out, err := sd.Marshal()
+	if err != nil {
+		require.NoError(t, err)
+	}
+
+	require.Equal(t, in, string(out))
 }
 
 func BenchmarkUnmarshal(b *testing.B) {
