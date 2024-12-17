@@ -169,6 +169,12 @@ const (
 		"a=ixmap:0 ping\r\n" +
 		"a=ixmap:2 xccp\r\n"
 
+	MediaTCPMRCPv2 = TimingSDP +
+		"m=application 1544 TCP/MRCPv2 1\r\n"
+
+	MediaTCPTLSMRCPv2 = TimingSDP +
+		"m=application 1544 TCP/TLS/MRCPv2 1\r\n"
+
 	CanonicalUnmarshalSDP = "v=0\r\n" +
 		"o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5\r\n" +
 		"s=SDP Seminar\r\n" +
@@ -319,6 +325,14 @@ func TestRoundTrip(t *testing.T) {
 		{
 			Name: "MediaCubeSDP",
 			SDP:  MediaCubeSDP,
+		},
+		{
+			Name: "MediaTCPMRCPv2",
+			SDP:  MediaTCPMRCPv2,
+		},
+		{
+			Name: "MediaTCPTLSMRCPv2",
+			SDP:  MediaTCPTLSMRCPv2,
 		},
 	} {
 		test := test
