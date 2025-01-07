@@ -17,11 +17,12 @@ const (
 	DefExtMapValueSDESMid         = 3
 	DefExtMapValueSDESRTPStreamID = 4
 
-	ABSSendTimeURI     = "http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"
-	TransportCCURI     = "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"
-	SDESMidURI         = "urn:ietf:params:rtp-hdrext:sdes:mid"
-	SDESRTPStreamIDURI = "urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id"
-	AudioLevelURI      = "urn:ietf:params:rtp-hdrext:ssrc-audio-level"
+	ABSSendTimeURI           = "http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"
+	TransportCCURI           = "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"
+	SDESMidURI               = "urn:ietf:params:rtp-hdrext:sdes:mid"
+	SDESRTPStreamIDURI       = "urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id"
+	SDESRepairRTPStreamIDURI = "urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id"
+	AudioLevelURI            = "urn:ietf:params:rtp-hdrext:ssrc-audio-level"
 )
 
 // ExtMap represents the activation of a single RTP header extension
