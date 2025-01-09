@@ -140,7 +140,7 @@ func parseFmtp(fmtp string) (Codec, error) {
 	parsingFailed := errExtractCodecFmtp
 
 	// a=fmtp:<format> <format specific parameters>
-	split := strings.Split(fmtp, " ")
+	split := strings.SplitN(fmtp, " ", 2)
 	if len(split) != 2 {
 		return codec, parsingFailed
 	}
