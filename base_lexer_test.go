@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestLexer(t *testing.T) {
+func TestLexer(t *testing.T) { //nolint:cyclop
 	t.Run("single field", func(t *testing.T) {
 		for k, value := range map[string]string{
 			"clean":            "aaa",
@@ -38,10 +38,10 @@ func TestLexer(t *testing.T) {
 	})
 
 	t.Run("many fields", func(t *testing.T) {
-		l := &baseLexer{value: "aaa  123\nf1 f2\nlast"}
+		lex := &baseLexer{value: "aaa  123\nf1 f2\nlast"}
 
 		t.Run("first line", func(t *testing.T) {
-			field, err := l.readField()
+			field, err := lex.readField()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -49,7 +49,7 @@ func TestLexer(t *testing.T) {
 				t.Errorf("aaa not parsed, got: '%v'", field)
 			}
 
-			value, err := l.readUint64Field()
+			value, err := lex.readUint64Field()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -57,13 +57,13 @@ func TestLexer(t *testing.T) {
 				t.Errorf("aaa not parsed, got: '%v'", field)
 			}
 
-			if err := l.nextLine(); err != nil {
+			if err := lex.nextLine(); err != nil {
 				t.Fatal(err)
 			}
 		})
 
 		t.Run("second line", func(t *testing.T) {
-			field, err := l.readField()
+			field, err := lex.readField()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -71,7 +71,7 @@ func TestLexer(t *testing.T) {
 				t.Errorf("value not parsed, got: '%v'", field)
 			}
 
-			field, err = l.readField()
+			field, err = lex.readField()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -79,7 +79,7 @@ func TestLexer(t *testing.T) {
 				t.Errorf("value not parsed, got: '%v'", field)
 			}
 
-			field, err = l.readField()
+			field, err = lex.readField()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -87,13 +87,13 @@ func TestLexer(t *testing.T) {
 				t.Errorf("value not parsed, got: '%v'", field)
 			}
 
-			if err := l.nextLine(); err != nil {
+			if err := lex.nextLine(); err != nil {
 				t.Fatal(err)
 			}
 		})
 
 		t.Run("last line", func(t *testing.T) {
-			field, err := l.readField()
+			field, err := lex.readField()
 			if err != nil {
 				t.Fatal(err)
 			}
