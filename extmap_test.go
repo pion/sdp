@@ -29,7 +29,7 @@ func TestExtmap(t *testing.T) {
 	for i, u := range passingtests {
 		actual := ExtMap{}
 		assert.NoError(t, actual.Unmarshal(u.parameter))
-		assert.Equal(t, u.expected, actual.Marshal(), "%d: %+v", i, u)
+		assert.Equalf(t, u.expected, actual.Marshal(), "%d: %+v", i, u)
 	}
 
 	for _, u := range failingtests {
@@ -47,7 +47,6 @@ func TestTransportCCExtMap(t *testing.T) {
 		URI:   uri,
 	}
 
-	if e.Marshal() == "3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01" {
-		t.Error("TestTransportCC failed")
-	}
+	assert.NotEqual(t, e.Marshal(),
+		"3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01")
 }

@@ -4,9 +4,10 @@
 package sdp
 
 import (
-	"errors"
 	"net/url"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 //nolint:goconst
@@ -165,25 +166,18 @@ func TestMarshalCanonical(t *testing.T) {
 	}
 
 	actual, err := sd.Marshal()
-	if got, want := err, error(nil); !errors.Is(got, want) {
-		t.Fatalf("Marshal(): err=%v, want %v", got, want)
-	}
-	if string(actual) != CanonicalMarshalSDP {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", CanonicalMarshalSDP, string(actual))
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, CanonicalMarshalSDP, string(actual))
 }
 
 func BenchmarkMarshal(b *testing.B) {
 	b.ReportAllocs()
 	var sd SessionDescription
 	err := sd.UnmarshalString(CanonicalUnmarshalSDP)
-	if err != nil {
-		b.Fatal(err)
-	}
+	assert.NoError(b, err)
+
 	for i := 0; i < b.N; i++ {
 		_, err = sd.Marshal()
-		if err != nil {
-			b.Fatal(err)
-		}
+		assert.NoError(b, err)
 	}
 }

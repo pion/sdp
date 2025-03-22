@@ -4,11 +4,12 @@
 package sdp
 
 import (
-	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestLexer(t *testing.T) { //nolint:cyclop
+func TestLexer(t *testing.T) {
 	t.Run("single field", func(t *testing.T) {
 		for k, value := range map[string]string{
 			"clean":            "aaa",
@@ -18,23 +19,15 @@ func TestLexer(t *testing.T) { //nolint:cyclop
 		} {
 			l := &baseLexer{value: value}
 			field, err := l.readField()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if field != "aaa" {
-				t.Errorf("%s: aaa not parsed, got: '%v'", k, field)
-			}
+			assert.NoError(t, err)
+			assert.Equalf(t, field, "aaa", "%s: aaa not parsed, got: '%v'", k, field)
 		}
 	})
 
 	t.Run("syntax error", func(t *testing.T) {
 		l := &baseLexer{value: "12NaN"}
 		_, err := l.readUint64Field()
-		if err != nil {
-			fmt.Println("error message:", err.Error())
-		} else {
-			t.Fatal("no error")
-		}
+		assert.Error(t, err)
 	})
 
 	t.Run("many fields", func(t *testing.T) {
@@ -42,64 +35,36 @@ func TestLexer(t *testing.T) { //nolint:cyclop
 
 		t.Run("first line", func(t *testing.T) {
 			field, err := lex.readField()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if field != "aaa" {
-				t.Errorf("aaa not parsed, got: '%v'", field)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, field, "aaa")
 
 			value, err := lex.readUint64Field()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if value != 123 {
-				t.Errorf("aaa not parsed, got: '%v'", field)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, value, uint64(123))
 
-			if err := lex.nextLine(); err != nil {
-				t.Fatal(err)
-			}
+			assert.NoError(t, lex.nextLine())
 		})
 
 		t.Run("second line", func(t *testing.T) {
 			field, err := lex.readField()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if field != "f1" {
-				t.Errorf("value not parsed, got: '%v'", field)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, field, "f1")
 
 			field, err = lex.readField()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if field != "f2" {
-				t.Errorf("value not parsed, got: '%v'", field)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, field, "f2")
 
 			field, err = lex.readField()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if field != "" {
-				t.Errorf("value not parsed, got: '%v'", field)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, field, "")
 
-			if err := lex.nextLine(); err != nil {
-				t.Fatal(err)
-			}
+			assert.NoError(t, lex.nextLine())
 		})
 
 		t.Run("last line", func(t *testing.T) {
 			field, err := lex.readField()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if field != "last" {
-				t.Errorf("value not parsed, got: '%v'", field)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, field, "last")
 		})
 	})
 }

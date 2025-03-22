@@ -4,11 +4,9 @@
 package sdp
 
 import (
-	"errors"
-	"strconv"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -340,89 +338,63 @@ func TestRoundTrip(t *testing.T) {
 			sd := &SessionDescription{}
 
 			err := sd.UnmarshalString(test.SDP)
-			if got, want := err, error(nil); !errors.Is(got, want) {
-				t.Fatalf("Unmarshal:\nerr=%v\nwant=%v", got, want)
-			}
+			assert.NoError(t, err)
 
 			actual, err := sd.Marshal()
-			if got, want := err, error(nil); !errors.Is(got, want) {
-				t.Fatalf("Marshal:\nerr=%v\nwant=%v", got, want)
-			}
+			assert.NoError(t, err)
+
 			want := test.SDP
 			if test.Actual != "" {
 				want = test.Actual
 			}
-			if got := string(actual); got != want {
-				t.Fatalf("Marshal:\ngot=%s\nwant=%s",
-					strconv.Quote(got), strconv.Quote(want),
-				)
-			}
+
+			assert.Equal(t, want, string(actual))
 		})
 	}
 }
 
 func TestUnmarshalRepeatTimes(t *testing.T) {
 	sd := &SessionDescription{}
-	if err := sd.UnmarshalString(RepeatTimesSDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
+	assert.NoError(t, sd.UnmarshalString(RepeatTimesSDP))
 
 	actual, err := sd.Marshal()
-	if got, want := err, error(nil); !errors.Is(got, want) {
-		t.Fatalf("Marshal(): err=%v, want %v", got, want)
-	}
-	if string(actual) != RepeatTimesSDPExpected {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", RepeatTimesSDPExpected, string(actual))
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, RepeatTimesSDPExpected, string(actual))
 
 	err = sd.UnmarshalString(TimingSDP + "r=\r\n")
-	if got, want := err, errSDPInvalidValue; !errors.Is(got, want) {
-		t.Fatalf("Marshal(): err=%v, want %v", got, want)
+	if !assert.ErrorIs(t, err, errSDPInvalidValue) {
+		assert.NoError(t, err)
 	}
 }
 
 func TestUnmarshalTimeZones(t *testing.T) {
 	sd := &SessionDescription{}
-	if err := sd.UnmarshalString(TimeZonesSDP); err != nil {
-		t.Errorf("error: %v", err)
-	}
+	assert.NoError(t, sd.UnmarshalString(TimeZonesSDP))
 
 	actual, err := sd.Marshal()
-	if got, want := err, error(nil); !errors.Is(got, want) {
-		t.Fatalf("Marshal(): err=%v, want %v", got, want)
-	}
-	if string(actual) != TimeZonesSDPExpected {
-		t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", TimeZonesSDPExpected, string(actual))
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, TimeZonesSDPExpected, string(actual))
 }
 
 func TestUnmarshalNonNilAddress(t *testing.T) {
 	in := "v=0\r\no=0 0 0 IN IP4 0\r\ns=0\r\nc=IN IP4\r\nt=0 0\r\n"
 	var sd SessionDescription
 	err := sd.UnmarshalString(in)
-	if err != nil {
-		t.Fatalf("failed to unmarshal %q", in)
-	}
+	assert.NoError(t, err)
+
 	out, err := sd.Marshal()
-	if err != nil {
-		t.Errorf("failed to marshal unmarshalled %q", in)
-	}
-	if string(out) != in {
-		t.Errorf("round trip = %q want %q", out, in)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, in, string(out))
 }
 
 func TestUnmarshalZeroValues(t *testing.T) {
 	in := "v=0\r\no=0 0 0 IN IP4 0\r\ns=\r\nt=0 0\r\n"
 	var sd SessionDescription
-	require.NoError(t, sd.UnmarshalString(in))
+	assert.NoError(t, sd.UnmarshalString(in))
 
 	out, err := sd.Marshal()
-	if err != nil {
-		require.NoError(t, err)
-	}
-
-	require.Equal(t, in, string(out))
+	assert.NoError(t, err)
+	assert.Equal(t, in, string(out))
 }
 
 func BenchmarkUnmarshal(b *testing.B) {
@@ -430,8 +402,6 @@ func BenchmarkUnmarshal(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var sd SessionDescription
 		err := sd.UnmarshalString(CanonicalUnmarshalSDP)
-		if err != nil {
-			b.Fatal(err)
-		}
+		assert.NoError(b, err)
 	}
 }

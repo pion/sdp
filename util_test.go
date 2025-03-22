@@ -4,11 +4,9 @@
 package sdp
 
 import (
-	"errors"
-	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func getTestSessionDescription() SessionDescription {
@@ -88,13 +86,8 @@ func TestGetPayloadTypeForVP8(t *testing.T) {
 		sd := getTestSessionDescription()
 
 		actual, err := sd.GetPayloadTypeForCodec(test.Codec)
-		if got, want := err, error(nil); !errors.Is(got, want) {
-			t.Fatalf("GetPayloadTypeForCodec(): err=%v, want=%v", got, want)
-		}
-
-		if actual != test.Expected {
-			t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", test.Expected, actual)
-		}
+		assert.NoError(t, err)
+		assert.Equal(t, actual, test.Expected)
 	}
 }
 
@@ -208,13 +201,8 @@ func TestGetCodecForPayloadType(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			actual, err := test.SD.GetCodecForPayloadType(test.PayloadType)
-			if got, want := err, error(nil); !errors.Is(got, want) {
-				t.Fatalf("GetCodecForPayloadType(): err=%v, want=%v", got, want)
-			}
-
-			if !reflect.DeepEqual(actual, test.Expected) {
-				t.Errorf("error:\n\nEXPECTED:\n%v\nACTUAL:\n%v", test.Expected, actual)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, actual, test.Expected)
 		})
 	}
 }
@@ -224,12 +212,8 @@ func TestNewSessionID(t *testing.T) {
 	maxVal := uint64(0)
 	for i := 0; i < 10000; i++ {
 		r, err := newSessionID()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if r > (1<<63)-1 {
-			t.Fatalf("Session ID must be less than 2**64-1, got %d", r)
-		}
+		assert.NoError(t, err)
+		assert.Lessf(t, r, uint64((1<<64)-1), "Session ID must be less than 2**64-1, got %d", r)
 		if r < minVal {
 			minVal = r
 		}
@@ -237,12 +221,9 @@ func TestNewSessionID(t *testing.T) {
 			maxVal = r
 		}
 	}
-	if minVal > 0x1000000000000000 {
-		t.Error("Value around lower boundary was not generated")
-	}
-	if maxVal < 0x7000000000000000 {
-		t.Error("Value around upper boundary was not generated")
-	}
+
+	assert.Less(t, minVal, uint64(0x1000000000000000), "Value around upper boundary was not generated")
+	assert.Greater(t, maxVal, uint64(0x7000000000000000), "Value around lower boundary was not generated")
 }
 
 func TestCodecMultipleValues(t *testing.T) {
@@ -280,7 +261,7 @@ func TestCodecMultipleValues(t *testing.T) {
 			)
 
 			_, err := sd.GetPayloadTypeForCodec(Codec{Name: "VP8/90000"})
-			require.ErrorIs(t, test.expectedError, err)
+			assert.ErrorIs(t, test.expectedError, err)
 		})
 	}
 }

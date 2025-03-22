@@ -3,7 +3,11 @@
 
 package sdp
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func FuzzUnmarshal(f *testing.F) {
 	f.Add("")
@@ -16,8 +20,6 @@ func FuzzUnmarshal(f *testing.F) {
 		}
 		// Check that we can marshal anything we unmarshalled.
 		_, err := sd.Marshal()
-		if err != nil {
-			t.Fatalf("failed to marshal")
-		}
+		assert.NoError(t, err)
 	})
 }
