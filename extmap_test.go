@@ -47,6 +47,9 @@ func TestTransportCCExtMap(t *testing.T) {
 		URI:   uri,
 	}
 
-	assert.NotEqual(t, e.Marshal(),
-		"3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01")
+	assert.NotEqual(
+		t, "3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01",
+		e.Marshal(),
+		"TestTransportCC failed",
+	)
 }

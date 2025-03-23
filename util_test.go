@@ -261,7 +261,7 @@ func TestCodecMultipleValues(t *testing.T) {
 			)
 
 			_, err := sd.GetPayloadTypeForCodec(Codec{Name: "VP8/90000"})
-			assert.ErrorIs(t, test.expectedError, err)
+			assert.ErrorIs(t, err, test.expectedError)
 		})
 	}
 }

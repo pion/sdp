@@ -362,9 +362,7 @@ func TestUnmarshalRepeatTimes(t *testing.T) {
 	assert.Equal(t, RepeatTimesSDPExpected, string(actual))
 
 	err = sd.UnmarshalString(TimingSDP + "r=\r\n")
-	if !assert.ErrorIs(t, err, errSDPInvalidValue) {
-		assert.NoError(t, err)
-	}
+	assert.ErrorIs(t, err, errSDPInvalidValue)
 }
 
 func TestUnmarshalTimeZones(t *testing.T) {

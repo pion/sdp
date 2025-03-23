@@ -20,7 +20,7 @@ func TestLexer(t *testing.T) {
 			l := &baseLexer{value: value}
 			field, err := l.readField()
 			assert.NoError(t, err)
-			assert.Equalf(t, field, "aaa", "%s: aaa not parsed, got: '%v'", k, field)
+			assert.Equalf(t, "aaa", field, "%s: aaa not parsed, got: '%v'", k, field)
 		}
 	})
 
@@ -36,7 +36,7 @@ func TestLexer(t *testing.T) {
 		t.Run("first line", func(t *testing.T) {
 			field, err := lex.readField()
 			assert.NoError(t, err)
-			assert.Equal(t, field, "aaa")
+			assert.Equal(t, "aaa", field)
 
 			value, err := lex.readUint64Field()
 			assert.NoError(t, err)
@@ -48,15 +48,15 @@ func TestLexer(t *testing.T) {
 		t.Run("second line", func(t *testing.T) {
 			field, err := lex.readField()
 			assert.NoError(t, err)
-			assert.Equal(t, field, "f1")
+			assert.Equal(t, "f1", field)
 
 			field, err = lex.readField()
 			assert.NoError(t, err)
-			assert.Equal(t, field, "f2")
+			assert.Equal(t, "f2", field)
 
 			field, err = lex.readField()
 			assert.NoError(t, err)
-			assert.Equal(t, field, "")
+			assert.Empty(t, field)
 
 			assert.NoError(t, lex.nextLine())
 		})
@@ -64,7 +64,7 @@ func TestLexer(t *testing.T) {
 		t.Run("last line", func(t *testing.T) {
 			field, err := lex.readField()
 			assert.NoError(t, err)
-			assert.Equal(t, field, "last")
+			assert.Equal(t, "last", field)
 		})
 	})
 }
