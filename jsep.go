@@ -23,6 +23,7 @@ const (
 	AttrKeyConnectionSetup  = "setup"
 	AttrKeyMID              = "mid"
 	AttrKeyICELite          = "ice-lite"
+	AttrKeyICEOptions       = "ice-options"
 	AttrKeyRTCPMux          = "rtcp-mux"
 	AttrKeyRTCPRsize        = "rtcp-rsize"
 	AttrKeyInactive         = "inactive"
@@ -109,6 +110,14 @@ func (s *SessionDescription) WithPropertyAttribute(key string) *SessionDescripti
 // WithValueAttribute adds a value attribute 'a=key:value' to the session description.
 func (s *SessionDescription) WithValueAttribute(key, value string) *SessionDescription {
 	s.Attributes = append(s.Attributes, NewAttribute(key, value))
+
+	return s
+}
+
+// WithICETrickleAdvertised advertises ICE trickle support in the session description.
+// See https://datatracker.ietf.org/doc/html/rfc9429#section-5.2.1
+func (s *SessionDescription) WithICETrickleAdvertised() *SessionDescription {
+	s.WithValueAttribute(AttrKeyICEOptions, "trickle ice2")
 
 	return s
 }
