@@ -4,6 +4,7 @@
 package sdp
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -393,6 +394,42 @@ func TestUnmarshalZeroValues(t *testing.T) {
 	out, err := sd.Marshal()
 	assert.NoError(t, err)
 	assert.Equal(t, in, string(out))
+}
+
+func TestUnmarshalPortRange(t *testing.T) {
+	for _, test := range []struct {
+		In          string
+		ExpectError error
+	}{
+		{
+			In:          SessionAttributesSDP + "m=video -1 RTP/AVP 99\r\n",
+			ExpectError: fmt.Errorf("%w -- out of range `%v`", errSDPInvalidPortValue, "-1"),
+		},
+		{
+			In:          SessionAttributesSDP + "m=video 65536 RTP/AVP 99\r\n",
+			ExpectError: fmt.Errorf("%w -- out of range `%v`", errSDPInvalidPortValue, "65536"),
+		},
+		{
+			In:          SessionAttributesSDP + "m=video 0 RTP/AVP 99\r\n",
+			ExpectError: nil,
+		},
+		{
+			In:          SessionAttributesSDP + "m=video 65535 RTP/AVP 99\r\n",
+			ExpectError: nil,
+		},
+		{
+			In:          SessionAttributesSDP + "m=video --- RTP/AVP 99\r\n",
+			ExpectError: fmt.Errorf("%w `%v`", errSDPInvalidPortValue, "---"),
+		},
+	} {
+		var sd SessionDescription
+		err := sd.UnmarshalString(test.In)
+		if err != nil && test.ExpectError != nil {
+			assert.Equal(t, test.ExpectError.Error(), err.Error())
+		} else {
+			assert.Equal(t, err, test.ExpectError)
+		}
+	}
 }
 
 func BenchmarkUnmarshal(b *testing.B) {

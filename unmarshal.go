@@ -811,7 +811,7 @@ func unmarshalMediaDescription(lex *lexer) (stateFn, error) { //nolint:cyclop
 	parts := strings.Split(field, "/")
 	newMediaDesc.MediaName.Port.Value, err = parsePort(parts[0])
 	if err != nil {
-		return nil, fmt.Errorf("%w `%v`", errSDPInvalidPortValue, parts[0])
+		return nil, err
 	}
 
 	if len(parts) > 1 {
@@ -986,10 +986,10 @@ func timeShorthand(b byte) int64 {
 func parsePort(value string) (int, error) {
 	port, err := strconv.Atoi(value)
 	if err != nil {
-		return 0, fmt.Errorf("%w `%v`", errSDPInvalidPortValue, port)
+		return 0, fmt.Errorf("%w `%v`", errSDPInvalidPortValue, value)
 	}
 
-	if port < 0 || port > 65536 {
+	if port < 0 || port > 65535 {
 		return 0, fmt.Errorf("%w -- out of range `%v`", errSDPInvalidPortValue, port)
 	}
 
