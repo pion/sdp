@@ -811,7 +811,7 @@ func unmarshalMediaDescription(lex *lexer) (stateFn, error) { //nolint:cyclop
 	parts := strings.Split(field, "/")
 	newMediaDesc.MediaName.Port.Value, err = parsePort(parts[0])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w `%v`", errSDPInvalidPortValue, parts[0])
 	}
 
 	if len(parts) > 1 {
