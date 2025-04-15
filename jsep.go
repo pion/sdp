@@ -117,9 +117,7 @@ func (s *SessionDescription) WithValueAttribute(key, value string) *SessionDescr
 // WithICETrickleAdvertised advertises ICE trickle support in the session description.
 // See https://datatracker.ietf.org/doc/html/rfc9429#section-5.2.1
 func (s *SessionDescription) WithICETrickleAdvertised() *SessionDescription {
-	s.WithValueAttribute(AttrKeyICEOptions, "trickle ice2")
-
-	return s
+	return s.WithValueAttribute(AttrKeyICEOptions, "trickle")
 }
 
 // WithFingerprint adds a fingerprint to the session description.

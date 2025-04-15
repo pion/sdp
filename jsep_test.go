@@ -56,7 +56,7 @@ func TestSessionDescriptionAttributes(t *testing.T) {
 		sd = sd.WithICETrickleAdvertised()
 		assert.Len(t, sd.Attributes, 3)
 		assert.Equal(t, AttrKeyICEOptions, sd.Attributes[2].Key)
-		assert.Equal(t, "trickle ice2", sd.Attributes[2].Value)
+		assert.Equal(t, "trickle", sd.Attributes[2].Value)
 	})
 
 	t.Run("WithFingerprint", func(t *testing.T) {
