@@ -39,7 +39,9 @@ const (
 	SemanticTokenLipSynchronization     = "LS"
 	SemanticTokenFlowIdentification     = "FID"
 	SemanticTokenForwardErrorCorrection = "FEC"
-	SemanticTokenWebRTCMediaStreams     = "WMS"
+	// https://datatracker.ietf.org/doc/html/rfc5956#section-4.1
+	SemanticTokenForwardErrorCorrectionFramework = "FEC-FR"
+	SemanticTokenWebRTCMediaStreams              = "WMS"
 )
 
 // Constants for extmap key.
