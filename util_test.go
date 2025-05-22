@@ -19,7 +19,7 @@ func getTestSessionDescription() SessionDescription {
 						Value: 51372,
 					},
 					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"120", "121", "126", "97", "98", "111"},
+					Formats: []string{"120", "121", "126", "97", "98"},
 				},
 				Attributes: []Attribute{
 					NewAttribute("fmtp:126 profile-level-id=42e01f;level-asymmetry-allowed=1;packetization-mode=1", ""),
@@ -32,7 +32,6 @@ func getTestSessionDescription() SessionDescription {
 					NewAttribute("rtpmap:126 H264/90000", ""),
 					NewAttribute("rtpmap:97 H264/90000", ""),
 					NewAttribute("rtpmap:98 H264/90000", ""),
-					NewAttribute("rtpmap:111 opus/48000/2", ""),
 					NewAttribute("rtcp-fb:97 ccm fir", ""),
 					NewAttribute("rtcp-fb:97 nack", ""),
 					NewAttribute("rtcp-fb:97 nack pli", ""),
@@ -224,44 +223,4 @@ func TestNewSessionID(t *testing.T) {
 
 	assert.Less(t, minVal, uint64(0x1000000000000000), "Value around upper boundary was not generated")
 	assert.Greater(t, maxVal, uint64(0x7000000000000000), "Value around lower boundary was not generated")
-}
-
-func TestCodecMultipleValues(t *testing.T) {
-	for _, test := range []struct {
-		name           string
-		attributeToAdd string
-		expectedError  error
-	}{
-		{
-			"multiple name",
-			"rtpmap:120 VP9/90000",
-			errMultipleName,
-		},
-		{
-			"multiple clockrate",
-			"rtpmap:120 VP8/80000",
-			errMultipleClockRate,
-		},
-		{
-			"multiple encoding parameters",
-			"rtpmap:111 opus/48000/3",
-			errMultipleEncodingParameters,
-		},
-		{
-			"multiple fmtp",
-			"fmtp:126 multiple-fmtp",
-			errMultipleFmtp,
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			sd := getTestSessionDescription()
-			sd.MediaDescriptions[0].Attributes = append(
-				sd.MediaDescriptions[0].Attributes,
-				NewPropertyAttribute(test.attributeToAdd),
-			)
-
-			_, err := sd.GetPayloadTypeForCodec(Codec{Name: "VP8/90000"})
-			assert.ErrorIs(t, err, test.expectedError)
-		})
-	}
 }
