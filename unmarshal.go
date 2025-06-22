@@ -21,7 +21,7 @@ var (
 
 	//nolint: gochecknoglobals
 	unmarshalCachePool = sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return &unmarshalCache{}
 		},
 	}
