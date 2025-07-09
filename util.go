@@ -25,6 +25,7 @@ var (
 	errPayloadTypeNotFound = errors.New("payload type not found")
 	errCodecNotFound       = errors.New("codec not found")
 	errSyntaxError         = errors.New("SyntaxError")
+	errFieldMissing        = errors.New("field missing")
 )
 
 // ConnectionRole indicates which of the end points should initiate the connection establishment.

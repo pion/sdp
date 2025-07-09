@@ -168,6 +168,19 @@ func (l *baseLexer) readField() (string, error) {
 	return l.value[start:stop], nil
 }
 
+func (l *lexer) readRequiredField() (string, error) {
+	field, err := l.readField()
+	if err != nil {
+		return "", err
+	}
+
+	if field == "" {
+		return "", errFieldMissing
+	}
+
+	return field, nil
+}
+
 // Returns symbols until line end.
 func (l *baseLexer) readLine() (string, error) {
 	start := l.pos

@@ -439,3 +439,143 @@ func BenchmarkUnmarshal(b *testing.B) {
 		assert.NoError(b, err)
 	}
 }
+
+func TestUnmarshalOriginIncomplete(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected Origin
+	}{
+		{
+			name:  "missing unicast address - Uniview camera case",
+			input: "v=0\r\no=- 1001 1 IN IP4\r\ns=VCP IPC Realtime stream\r\nt=0 0\r\n",
+			expected: Origin{
+				Username:       "-",
+				SessionID:      1001,
+				SessionVersion: 1,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "0.0.0.0",
+			},
+		},
+		{
+			name:  "missing address type and address",
+			input: "v=0\r\no=- 1001 1 IN\r\ns=Test Stream\r\nt=0 0\r\n",
+			expected: Origin{
+				Username:       "-",
+				SessionID:      1001,
+				SessionVersion: 1,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "0.0.0.0",
+			},
+		},
+		{
+			name:  "IPv6 missing address",
+			input: "v=0\r\no=- 1001 1 IN IP6\r\ns=Test Stream\r\nt=0 0\r\n",
+			expected: Origin{
+				Username:       "-",
+				SessionID:      1001,
+				SessionVersion: 1,
+				NetworkType:    "IN",
+				AddressType:    "IP6",
+				UnicastAddress: "::",
+			},
+		},
+		{
+			name:  "complete origin line - should work as before",
+			input: "v=0\r\no=jdoe 2890844526 2890842807 IN IP4 10.47.16.5\r\ns=SDP Seminar\r\nt=3034423619 3042462419\r\n",
+			expected: Origin{
+				Username:       "jdoe",
+				SessionID:      2890844526,
+				SessionVersion: 2890842807,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "10.47.16.5",
+			},
+		},
+		{
+			name:  "empty address field",
+			input: "v=0\r\no=- 1001 1 IN IP4 \r\ns=Test\r\nt=0 0\r\n",
+			expected: Origin{
+				Username:       "-",
+				SessionID:      1001,
+				SessionVersion: 1,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "0.0.0.0",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var sd SessionDescription
+			err := sd.UnmarshalString(test.input)
+			assert.NoError(t, err)
+			assert.Equal(t, test.expected, sd.Origin)
+		})
+	}
+}
+
+func TestUnmarshalOriginInvalidFields(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "invalid network type",
+			input: "v=0\r\no=- 1001 1 INVALID IP4 10.0.0.1\r\ns=Test\r\nt=0 0\r\n",
+		},
+		{
+			name:  "invalid address type",
+			input: "v=0\r\no=- 1001 1 IN INVALID 10.0.0.1\r\ns=Test\r\nt=0 0\r\n",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var sd SessionDescription
+			err := sd.UnmarshalString(test.input)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid value")
+		})
+	}
+}
+
+// Test edge cases for 100% coverage.
+func TestUnmarshalOriginEdgeCases(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		expectError bool
+	}{
+		{
+			name:        "missing mandatory username",
+			input:       "v=0\r\no=\r\ns=Test\r\nt=0 0\r\n",
+			expectError: true,
+		},
+		{
+			name:        "missing mandatory session ID",
+			input:       "v=0\r\no=user\r\ns=Test\r\nt=0 0\r\n",
+			expectError: true,
+		},
+		{
+			name:        "missing mandatory network type",
+			input:       "v=0\r\no=user 1001 1\r\ns=Test\r\nt=0 0\r\n",
+			expectError: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var sd SessionDescription
+			err := sd.UnmarshalString(test.input)
+			if test.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
