@@ -332,6 +332,20 @@ func (s *SessionDescription) GetCodecForPayloadType(payloadType uint8) (Codec, e
 	return codec, errPayloadTypeNotFound
 }
 
+func (s *SessionDescription) GetCodecsForPayloadTypes(payloadTypes []uint8) ([]Codec, error) {
+	codecs := s.buildCodecMap()
+
+	result := make([]Codec, 0, len(payloadTypes))
+	for _, payloadType := range payloadTypes {
+		codec, ok := codecs[payloadType]
+		if ok {
+			result = append(result, codec)
+		}
+	}
+
+	return result, nil
+}
+
 // GetPayloadTypeForCodec scans the SessionDescription for a codec that matches the provided codec
 // as closely as possible and returns its payload type.
 func (s *SessionDescription) GetPayloadTypeForCodec(wanted Codec) (uint8, error) {

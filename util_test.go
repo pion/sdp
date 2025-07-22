@@ -206,6 +206,70 @@ func TestGetCodecForPayloadType(t *testing.T) {
 	}
 }
 
+func TestGetCodecsForPayloadTypes(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		SD           SessionDescription
+		PayloadTypes []uint8
+		Expected     []Codec
+	}{
+		{
+			"vp8-9",
+			getTestSessionDescription(),
+			[]uint8{120, 121},
+			[]Codec{
+				{
+					PayloadType:  120,
+					Name:         "VP8",
+					ClockRate:    90000,
+					Fmtp:         "max-fs=12288;max-fr=60",
+					RTCPFeedback: []string{"transport-cc", "nack"},
+				},
+				{
+					PayloadType:  121,
+					Name:         "VP9",
+					ClockRate:    90000,
+					Fmtp:         "max-fs=12288;max-fr=60",
+					RTCPFeedback: []string{"transport-cc", "nack"},
+				},
+			},
+		},
+		{
+			"pcma without rtpmap",
+			SessionDescription{
+				MediaDescriptions: []*MediaDescription{
+					{
+						MediaName: MediaName{
+							Media:   "audio",
+							Protos:  []string{"RTP", "AVP"},
+							Formats: []string{"0", "8"},
+						},
+					},
+				},
+			},
+			[]uint8{0, 8},
+			[]Codec{
+				{
+					PayloadType: 0,
+					Name:        "PCMU",
+					ClockRate:   8000,
+				},
+				{
+					PayloadType: 8,
+					Name:        "PCMA",
+					ClockRate:   8000,
+				},
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			actual, err := test.SD.GetCodecsForPayloadTypes(test.PayloadTypes)
+			assert.NoError(t, err)
+			assert.Equal(t, actual, test.Expected)
+		})
+	}
+}
+
 func TestNewSessionID(t *testing.T) {
 	minVal := uint64(0x7FFFFFFFFFFFFFFF)
 	maxVal := uint64(0)
