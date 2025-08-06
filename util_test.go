@@ -165,7 +165,7 @@ func TestGetCodecForPayloadType(t *testing.T) {
 						MediaName: MediaName{
 							Media:   "audio",
 							Protos:  []string{"RTP", "AVP"},
-							Formats: []string{"0", "8"},
+							Formats: []string{"0", "8", "9"},
 						},
 					},
 				},
@@ -185,7 +185,7 @@ func TestGetCodecForPayloadType(t *testing.T) {
 						MediaName: MediaName{
 							Media:   "audio",
 							Protos:  []string{"RTP", "AVP"},
-							Formats: []string{"0", "8"},
+							Formats: []string{"0", "8", "9"},
 						},
 					},
 				},
@@ -194,6 +194,26 @@ func TestGetCodecForPayloadType(t *testing.T) {
 			Codec{
 				PayloadType: 8,
 				Name:        "PCMA",
+				ClockRate:   8000,
+			},
+		},
+		{
+			"g722 without rtpmap",
+			SessionDescription{
+				MediaDescriptions: []*MediaDescription{
+					{
+						MediaName: MediaName{
+							Media:   "audio",
+							Protos:  []string{"RTP", "AVP"},
+							Formats: []string{"0", "8", "9"},
+						},
+					},
+				},
+			},
+			9,
+			Codec{
+				PayloadType: 9,
+				Name:        "G722",
 				ClockRate:   8000,
 			},
 		},

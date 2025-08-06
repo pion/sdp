@@ -240,6 +240,11 @@ func (s *SessionDescription) buildCodecMap() map[uint8]Codec { //nolint:cyclop
 			Name:        "PCMA",
 			ClockRate:   8000,
 		},
+		9: {
+			PayloadType: 9,
+			Name:        "G722",
+			ClockRate:   8000,
+		},
 	}
 
 	wildcardRTCPFeedback := []string{}
