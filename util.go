@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -98,10 +99,8 @@ func (c Codec) String() string {
 }
 
 func (c *Codec) appendRTCPFeedback(rtcpFeedback string) {
-	for _, existingRTCPFeedback := range c.RTCPFeedback {
-		if existingRTCPFeedback == rtcpFeedback {
-			return
-		}
+	if slices.Contains(c.RTCPFeedback, rtcpFeedback) {
+		return
 	}
 
 	c.RTCPFeedback = append(c.RTCPFeedback, rtcpFeedback)
