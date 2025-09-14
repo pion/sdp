@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 )
 
@@ -228,11 +229,5 @@ func isNewline(ch byte) bool { return ch == '\n' || ch == '\r' }
 func isWhitespace(ch byte) bool { return ch == ' ' || ch == '\t' }
 
 func anyOf(element string, data ...string) bool {
-	for _, v := range data {
-		if element == v {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(data, element)
 }
