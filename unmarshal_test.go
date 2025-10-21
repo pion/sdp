@@ -5,7 +5,10 @@ package sdp
 
 import (
 	"io"
+	"net"
+	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -173,6 +176,11 @@ const (
 
 	MediaTCPTLSMRCPv2 = TimingSDP +
 		"m=application 1544 TCP/TLS/MRCPv2 1\r\n"
+
+	minimalBaseSDP = "v=0\r\n" +
+		"o=- 1 1 IN IP4 0.0.0.0\r\n" +
+		"s=-\r\n" +
+		"t=0 0\r\n"
 
 	CanonicalUnmarshalSDP = "v=0\r\n" +
 		"o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5\r\n" +
@@ -1899,5 +1907,146 @@ func TestTimeShorthand_MinutesAndSeconds(t *testing.T) {
 
 	t.Run("seconds (s)", func(t *testing.T) {
 		assert.Equal(t, int64(1), timeShorthand('s'))
+	})
+}
+
+func TestIgnoreMalformedSessionCandidate(t *testing.T) {
+	in := minimalBaseSDP +
+		"a=recvonly\r\n" +
+		// invalid IPv4 address should be ignored
+		"a=candidate:1 1 UDP 12345 999.999.999.999 1234 typ host\r\n"
+
+	var sd SessionDescription
+	err := sd.UnmarshalString(in)
+	assert.NoError(t, err)
+
+	out, err := sd.Marshal()
+	assert.NoError(t, err)
+
+	// candidate line should be dropped, everything else is preserved
+	want := minimalBaseSDP + "a=recvonly\r\n"
+	assert.Equal(t, want, string(out))
+}
+
+func TestIgnoreMalformedMediaCandidate(t *testing.T) {
+	in := minimalBaseSDP +
+		"m=audio 9 RTP/AVP 0\r\n" +
+		"a=rtpmap:0 PCMU/8000\r\n" +
+		// malformed, should be ignored
+		"a=candidate:1 1 UDP 12345 not_an_ip 1234 typ host\r\n" +
+		// valid candidate remains
+		"a=candidate:2 1 UDP 12345 203.0.113.1 2345 typ host\r\n"
+
+	var sd SessionDescription
+	err := sd.UnmarshalString(in)
+	assert.NoError(t, err)
+
+	out, err := sd.Marshal()
+	assert.NoError(t, err)
+
+	want := minimalBaseSDP +
+		"m=audio 9 RTP/AVP 0\r\n" +
+		"a=rtpmap:0 PCMU/8000\r\n" +
+		"a=candidate:2 1 UDP 12345 203.0.113.1 2345 typ host\r\n"
+	assert.Equal(t, want, string(out))
+}
+
+func TestAllowMDNSCandidate(t *testing.T) {
+	in := minimalBaseSDP +
+		// mDNS hostnames are valid
+		"a=candidate:1 1 UDP 12345 myhost.local 1234 typ host\r\n"
+
+	var sd SessionDescription
+	err := sd.UnmarshalString(in)
+	assert.NoError(t, err)
+
+	out, err := sd.Marshal()
+	assert.NoError(t, err)
+	assert.Equal(t, in, string(out))
+}
+
+func TestAllowIPv6Candidate(t *testing.T) {
+	in := minimalBaseSDP +
+		// IPv6 literal is valid
+		"a=candidate:1 1 UDP 12345 2001:db8::1 5555 typ host\r\n"
+
+	var sd SessionDescription
+	err := sd.UnmarshalString(in)
+	assert.NoError(t, err)
+
+	out, err := sd.Marshal()
+	assert.NoError(t, err)
+	assert.Equal(t, in, string(out))
+}
+
+func TestIgnoreTruncatedCandidate(t *testing.T) {
+	in := minimalBaseSDP +
+		// missing port + fewer than 6 fields after split should be ignored
+		"a=candidate:1 1 UDP 2113667327 203.0.113.1\r\n"
+
+	var sd SessionDescription
+	err := sd.UnmarshalString(in)
+	assert.NoError(t, err)
+
+	out, err := sd.Marshal()
+	assert.NoError(t, err)
+	// attribute should be dropped
+	assert.Equal(t, minimalBaseSDP, string(out))
+}
+
+func FuzzUnmarshalIgnoreMalformedCandidates(f *testing.F) {
+	// Seeds: valid IPv4, valid IPv6, mDNS, and some bad cases
+	for _, seed := range []string{
+		"203.0.113.1",
+		"2001:db8::1",
+		"router.local",
+		"999.999.999.999",
+		"bad space", // should be sanitized
+		"",          // should be coerced
+		"::::",      // invalid IPv6
+		"host_name", // underscore is invalid for DNS but we just treat as string
+		"-.-",       // sample punctuation
+	} {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, addr string) {
+		// sanitize fuzzed addr to avoid breaking SDP tokenization/lines
+		addr = strings.Map(func(r rune) rune {
+			switch {
+			case unicode.IsLetter(r), unicode.IsDigit(r):
+				return r
+			}
+			// allow a few safe punctuation characters
+			switch r {
+			case '.', ':', '-':
+				return r
+			default:
+				return -1
+			}
+		}, addr)
+		if addr == "" {
+			addr = "bad"
+		}
+
+		line := "a=candidate:1 1 UDP 12345 " + addr + " 1 typ host\r\n"
+		in := minimalBaseSDP + line
+
+		var sd SessionDescription
+		err := sd.UnmarshalString(in)
+		// unmarshal should never error if a candidate address is malformed.
+		assert.NoError(t, err)
+
+		outBytes, err := sd.Marshal()
+		assert.NoError(t, err)
+		out := string(outBytes)
+
+		// Determine if candidate should be kept
+		keep := strings.HasSuffix(addr, ".local") || net.ParseIP(addr) != nil
+		if keep {
+			assert.Contains(t, out, line)
+		} else {
+			assert.NotContains(t, out, line)
+		}
 	})
 }
