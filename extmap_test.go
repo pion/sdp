@@ -53,3 +53,44 @@ func TestTransportCCExtMap(t *testing.T) {
 		"TestTransportCC failed",
 	)
 }
+
+func TestExtMap_Clone(t *testing.T) {
+	u, _ := url.Parse(AudioLevelURI)
+	ext := "vad"
+	em := &ExtMap{Value: 5, URI: u, ExtAttr: &ext}
+
+	got := em.Clone()
+	assert.Equal(t, "extmap", got.Key)
+	assert.Equal(t, "5 "+AudioLevelURI+" "+ext, got.Value)
+}
+
+func TestExtMap_Unmarshal_Error_LenParts(t *testing.T) {
+	var em ExtMap
+
+	err := em.Unmarshal("extmap 1 example.com")
+	assert.ErrorIs(t, err, errSyntaxError)
+
+	err = em.Unmarshal("")
+	assert.ErrorIs(t, err, errSyntaxError)
+}
+
+func TestExtMap_Unmarshal_Error_LenFields(t *testing.T) {
+	var em ExtMap
+
+	err := em.Unmarshal("extmap:1")
+	assert.ErrorIs(t, err, errSyntaxError)
+}
+
+func TestExtMap_Unmarshal_Error_NewDirection(t *testing.T) {
+	var em ExtMap
+
+	err := em.Unmarshal("extmap:1/not-a-dir http://example.com")
+	assert.Error(t, err)
+}
+
+func TestExtMap_Unmarshal_Error_URLParse(t *testing.T) {
+	var em ExtMap
+
+	err := em.Unmarshal("extmap:1 http://example.com/%zz")
+	assert.Error(t, err)
+}
