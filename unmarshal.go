@@ -6,6 +6,7 @@ package sdp
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"strconv"
 	"strings"
@@ -132,6 +133,24 @@ func (s *SessionDescription) UnmarshalString(value string) error {
 	populateMediaAttributes(lex.cache, lex.desc)
 
 	return nil
+}
+
+// isBadCandidateAddress returns true if the candidate line has an invalid connection-address.
+// It allows mDNS hostnames (".local") per ICE-mDNS.
+func isBadCandidateAddress(candidateValue string) bool {
+	fields := strings.Fields(candidateValue)
+
+	if len(fields) < 6 {
+		return true // clearly malformed candidate line
+	}
+
+	addr := fields[4]
+
+	if strings.HasSuffix(addr, ".local") {
+		return false // always allow mDNS host candidates
+	}
+
+	return net.ParseIP(addr) == nil
 }
 
 // Unmarshal converts the value into a []byte and then calls UnmarshalString.
@@ -813,18 +832,27 @@ func unmarshalSessionEncryptionKey(l *lexer) (stateFn, error) {
 	return s11, nil
 }
 
-func unmarshalSessionAttribute(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+func unmarshalSessionAttribute(lex *lexer) (stateFn, error) {
+	value, err := lex.readLine()
 	if err != nil {
 		return nil, err
 	}
 
 	i := strings.IndexRune(value, ':')
-	a := l.cache.getSessionAttribute()
 	if i > 0 {
-		a.Key = value[:i]
-		a.Value = value[i+1:]
+		key := value[:i]
+		val := value[i+1:]
+
+		if key == AttrKeyCandidate && isBadCandidateAddress(val) {
+			// Ignore malformed candidate; keep processing rest of SDP
+			return s11, nil
+		}
+
+		a := lex.cache.getSessionAttribute()
+		a.Key = key
+		a.Value = val
 	} else {
+		a := lex.cache.getSessionAttribute()
 		a.Key = value
 	}
 
@@ -975,18 +1003,27 @@ func unmarshalMediaEncryptionKey(l *lexer) (stateFn, error) {
 	return s14, nil
 }
 
-func unmarshalMediaAttribute(l *lexer) (stateFn, error) {
-	value, err := l.readLine()
+func unmarshalMediaAttribute(lex *lexer) (stateFn, error) {
+	value, err := lex.readLine()
 	if err != nil {
 		return nil, err
 	}
 
 	i := strings.IndexRune(value, ':')
-	a := l.cache.getMediaAttribute()
 	if i > 0 {
-		a.Key = value[:i]
-		a.Value = value[i+1:]
+		key := value[:i]
+		val := value[i+1:]
+
+		if key == AttrKeyCandidate && isBadCandidateAddress(val) {
+			// Ignore malformed candidate; keep processing rest of SDP
+			return s14, nil
+		}
+
+		a := lex.cache.getMediaAttribute()
+		a.Key = key
+		a.Value = val
 	} else {
+		a := lex.cache.getMediaAttribute()
 		a.Key = value
 	}
 
