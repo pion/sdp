@@ -244,3 +244,216 @@ func TestNewSessionID(t *testing.T) {
 	assert.Less(t, minVal, uint64(0x1000000000000000), "Value around upper boundary was not generated")
 	assert.Greater(t, maxVal, uint64(0x7000000000000000), "Value around lower boundary was not generated")
 }
+
+func TestConnectionRole_String(t *testing.T) {
+	assert.Equal(t, "active", ConnectionRoleActive.String())
+	assert.Equal(t, "passive", ConnectionRolePassive.String())
+	assert.Equal(t, "actpass", ConnectionRoleActpass.String())
+	assert.Equal(t, "holdconn", ConnectionRoleHoldconn.String())
+
+	var zero ConnectionRole
+	assert.Equal(t, "Unknown", zero.String())
+
+	var bogus ConnectionRole = 99
+	assert.Equal(t, "Unknown", bogus.String())
+}
+
+func TestCodec_String(t *testing.T) {
+	c := Codec{
+		PayloadType:        111,
+		Name:               "opus",
+		ClockRate:          48000,
+		EncodingParameters: "2",
+		Fmtp:               "minptime=10;useinbandfec=1",
+		RTCPFeedback:       []string{"nack", "pli"},
+	}
+
+	got := c.String()
+	assert.Equal(t, "111 opus/48000/2 (minptime=10;useinbandfec=1) [nack, pli]", got)
+}
+
+func TestParseRtpmap_NoEncodingParams(t *testing.T) {
+	codec, err := parseRtpmap("rtpmap:111 opus/48000")
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint8(111), codec.PayloadType)
+	assert.Equal(t, "opus", codec.Name)
+	assert.Equal(t, uint32(48000), codec.ClockRate)
+	assert.Equal(t, "", codec.EncodingParameters)
+}
+
+func TestParseRtpmap_WithEncodingParams(t *testing.T) {
+	codec, err := parseRtpmap("rtpmap:96 MP4A-LATM/44100/2")
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint8(96), codec.PayloadType)
+	assert.Equal(t, "MP4A-LATM", codec.Name)
+	assert.Equal(t, uint32(44100), codec.ClockRate)
+	assert.Equal(t, "2", codec.EncodingParameters)
+}
+
+func TestParseRtpmap_Error_MissingSpace(t *testing.T) {
+	// missing space
+	_, err := parseRtpmap("rtpmap:111")
+	assert.ErrorIs(t, err, errExtractCodecRtpmap)
+}
+
+func TestParseRtpmap_Error_MissingColon(t *testing.T) {
+	// missing colon
+	_, err := parseRtpmap("rtpmap111 opus/48000")
+	assert.ErrorIs(t, err, errExtractCodecRtpmap)
+}
+
+func TestParseRtpmap_Error_NonNumericPayload(t *testing.T) {
+	// non-numeric
+	_, err := parseRtpmap("rtpmap:xx opus/48000")
+	assert.ErrorIs(t, err, errExtractCodecRtpmap)
+}
+
+func TestParseRtpmap_Error_NonNumericClockRate(t *testing.T) {
+	_, err := parseRtpmap("rtpmap:111 opus/notanumber")
+	assert.ErrorIs(t, err, errExtractCodecRtpmap)
+}
+
+func TestParseFmtp_Error_MissingSpace(t *testing.T) {
+	_, err := parseFmtp("fmtp:111")
+	assert.ErrorIs(t, err, errExtractCodecFmtp)
+}
+
+func TestParseFmtp_Error_MissingColon(t *testing.T) {
+	_, err := parseFmtp("fmtp111 a=b;c=d")
+	assert.ErrorIs(t, err, errExtractCodecFmtp)
+}
+
+func TestParseFmtp_Error_NonNumericPayload(t *testing.T) {
+	_, err := parseFmtp("fmtp:xx profile-level-id=42e01f;packetization-mode=1")
+	assert.ErrorIs(t, err, errExtractCodecFmtp)
+}
+
+func TestEquivalentFmtp_MismatchAfterSortAndTrim(t *testing.T) {
+	want := "profile-level-id=42e01f; packetization-mode=1"
+	got := "packetization-mode=0;  profile-level-id=42e01f"
+
+	assert.False(t, equivalentFmtp(want, got))
+}
+
+func TestParseRtcpFb_MissingSpace(t *testing.T) {
+	c, wildcard, err := parseRtcpFb("rtcp-fb:97")
+	assert.ErrorIs(t, err, errExtractCodecRtcpFb)
+	assert.False(t, wildcard)
+	assert.Equal(t, uint8(0), c.PayloadType)
+	assert.Empty(t, c.RTCPFeedback)
+}
+
+func TestParseRtcpFb_MissingColon(t *testing.T) {
+	c, wildcard, err := parseRtcpFb("rtcp-fb97 nack")
+	assert.ErrorIs(t, err, errExtractCodecRtcpFb)
+	assert.False(t, wildcard)
+	assert.Equal(t, uint8(0), c.PayloadType)
+	assert.Empty(t, c.RTCPFeedback)
+}
+
+func TestParseRtcpFb_NonNumeric(t *testing.T) {
+	c, wildcard, err := parseRtcpFb("rtcp-fb:xx nack")
+	assert.Error(t, err)
+	assert.False(t, wildcard)
+	assert.Equal(t, uint8(0), c.PayloadType)
+	assert.Empty(t, c.RTCPFeedback)
+}
+
+func TestBuildCodecMap_RtcpFbError(t *testing.T) {
+	sd := SessionDescription{
+		MediaDescriptions: []*MediaDescription{
+			{
+				Attributes: []Attribute{
+					// non-numeric should return an error
+					NewAttribute("rtcp-fb:xx nack", ""),
+				},
+			},
+		},
+	}
+
+	codecs := sd.buildCodecMap()
+
+	// the three static codecs should be present, unchanged.
+	if assert.Len(t, codecs, 3) {
+		if c, ok := codecs[0]; assert.True(t, ok) {
+			assert.Equal(t, uint8(0), c.PayloadType)
+			assert.Equal(t, "PCMU", c.Name)
+			assert.Equal(t, uint32(8000), c.ClockRate)
+			assert.Empty(t, c.RTCPFeedback)
+		}
+		if c, ok := codecs[8]; assert.True(t, ok) {
+			assert.Equal(t, uint8(8), c.PayloadType)
+			assert.Equal(t, "PCMA", c.Name)
+			assert.Equal(t, uint32(8000), c.ClockRate)
+			assert.Empty(t, c.RTCPFeedback)
+		}
+		if c, ok := codecs[9]; assert.True(t, ok) {
+			assert.Equal(t, uint8(9), c.PayloadType)
+			assert.Equal(t, "G722", c.Name)
+			assert.Equal(t, uint32(8000), c.ClockRate)
+			assert.Empty(t, c.RTCPFeedback)
+		}
+	}
+}
+
+func TestCodecsMatch_MiddleFalse_ClockRateMismatch(t *testing.T) {
+	expected := Codec{ClockRate: 44100}
+	actual := Codec{Name: "opus", ClockRate: 48000}
+	assert.False(t, codecsMatch(expected, actual))
+}
+
+func TestCodecsMatch_MiddleFalse_EncodingParamsMismatch(t *testing.T) {
+	expected := Codec{EncodingParameters: "1"}
+	actual := Codec{EncodingParameters: "2"}
+	assert.False(t, codecsMatch(expected, actual))
+}
+
+func TestGetCodecForPayloadType_Error_NotFound(t *testing.T) {
+	var sd SessionDescription
+	_, err := sd.GetCodecForPayloadType(42)
+	assert.ErrorIs(t, err, errPayloadTypeNotFound)
+}
+
+func TestGetPayloadTypeForCodec_Error_NotFound(t *testing.T) {
+	var sd SessionDescription
+	_, err := sd.GetPayloadTypeForCodec(Codec{Name: "doesnotexist"})
+	assert.ErrorIs(t, err, errCodecNotFound)
+}
+
+func TestLexer_HandleType_ElseIfErrorFromReadType(t *testing.T) {
+	// should cause a syntaxError (key='a', err=syntaxError) because second byte != '='
+	l := &lexer{baseLexer: baseLexer{value: "a-"}}
+
+	called := false
+	fn := func(key byte) stateFn {
+		called = true // should not be called because handleType returns early on err != nil
+
+		return func(*lexer) (stateFn, error) { return nil, nil }
+	}
+
+	st, err := l.handleType(fn)
+	assert.Nil(t, st)
+	assert.False(t, called)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestLexer_HandleType_SyntaxErrorWhenFnReturnsNil(t *testing.T) {
+	// valid type "a=" so readType returns nil error so fn returns nil
+	l := &lexer{baseLexer: baseLexer{value: "a="}}
+
+	fn := func(key byte) stateFn {
+		assert.Equal(t, byte('a'), key)
+
+		return nil // should trigger final syntaxError
+	}
+
+	st, err := l.handleType(fn)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
