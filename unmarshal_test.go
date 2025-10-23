@@ -4,6 +4,7 @@
 package sdp
 
 import (
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -578,4 +579,1325 @@ func TestUnmarshalOriginEdgeCases(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUnmarshalString_ErrSDPCacheInvalid(t *testing.T) {
+	origNew := unmarshalCachePool.New
+	t.Cleanup(func() { unmarshalCachePool.New = origNew })
+
+	// ensure there are no cached values.
+	unmarshalCachePool.New = nil
+	for v := unmarshalCachePool.Get(); v != nil; v = unmarshalCachePool.Get() {
+		// discard
+	}
+
+	unmarshalCachePool.New = func() any { return 123 }
+
+	var sd SessionDescription
+	err := sd.UnmarshalString("")
+	assert.ErrorIs(t, err, errSDPCacheInvalid)
+}
+
+func TestUnmarshal_DelegatesToUnmarshalString(t *testing.T) {
+	in := []byte("v=0\r\no=0 0 0 IN IP4 0\r\ns=0\r\nt=0 0\r\n")
+	var sd SessionDescription
+	assert.NoError(t, sd.Unmarshal(in))
+
+	out, err := sd.Marshal()
+	assert.NoError(t, err)
+	assert.Equal(t, string(in), string(out))
+}
+
+func TestS1_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "a="}} // not 'v'
+	st, err := s1(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS2_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "a="}} // not 'o'
+	st, err := s2(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS3_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "a="}} // not 's'
+	st, err := s3(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS4_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "a="}}
+
+	st, err := s4(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS5_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "a="}}
+
+	st, err := s5(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS6_KeyC_UnmarshalSessionConnectionInformation(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "c=IN IP4 111.1.111.1\r\n"},
+	}
+
+	st, err := s6(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		if assert.NotNil(t, lex.desc.ConnectionInformation) {
+			ci := lex.desc.ConnectionInformation
+			assert.Equal(t, "IN", ci.NetworkType)
+			assert.Equal(t, "IP4", ci.AddressType)
+
+			if assert.NotNil(t, ci.Address) {
+				assert.Equal(t, "111.1.111.1", ci.Address.Address)
+			}
+		}
+	}
+}
+
+func TestS6_KeyB_UnmarshalSessionBandwidth(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "b=AS:123\r\n"},
+	}
+
+	st, err := s6(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		if assert.Len(t, lex.desc.Bandwidth, 1) {
+			bw := lex.desc.Bandwidth[0]
+			assert.False(t, bw.Experimental)
+			assert.Equal(t, "AS", bw.Type)
+			assert.Equal(t, uint64(123), bw.Bandwidth)
+		}
+	}
+}
+
+func TestS6_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "a="}}
+
+	st, err := s6(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS7_KeyE_UnmarshalEmail(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "e=abc.Def@example.com (abc Def)\r\n"},
+	}
+
+	st, err := s7(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		if assert.NotNil(t, lex.desc.EmailAddress) {
+			assert.Equal(t, "abc.Def@example.com (abc Def)", string(*lex.desc.EmailAddress))
+		}
+	}
+}
+
+func TestS7_KeyP_UnmarshalPhone(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "p=+1 111 111-1111\r\n"},
+	}
+
+	st, err := s7(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		if assert.NotNil(t, lex.desc.PhoneNumber) {
+			assert.Equal(t, "+1 111 111-1111", string(*lex.desc.PhoneNumber))
+		}
+	}
+}
+
+func TestS7_KeyC_UnmarshalSessionConnectionInformation(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "c=IN IP4 111.1.111.1\r\n"},
+	}
+
+	st, err := s7(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		if assert.NotNil(t, lex.desc.ConnectionInformation) {
+			ci := lex.desc.ConnectionInformation
+			assert.Equal(t, "IN", ci.NetworkType)
+			assert.Equal(t, "IP4", ci.AddressType)
+
+			if assert.NotNil(t, ci.Address) {
+				assert.Equal(t, "111.1.111.1", ci.Address.Address)
+			}
+		}
+	}
+}
+
+func TestS7_KeyB_UnmarshalSessionBandwidth(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "b=AS:123\r\n"},
+	}
+
+	st, err := s7(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		if assert.Len(t, lex.desc.Bandwidth, 1) {
+			bw := lex.desc.Bandwidth[0]
+			assert.False(t, bw.Experimental)
+			assert.Equal(t, "AS", bw.Type)
+			assert.Equal(t, uint64(123), bw.Bandwidth)
+		}
+	}
+}
+
+func TestS7_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "a="}}
+
+	st, err := s7(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS8_KeyB_UnmarshalSessionBandwidth(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "b=AS:123\r\n"},
+	}
+
+	st, err := s8(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		if assert.Len(t, lex.desc.Bandwidth, 1) {
+			bw := lex.desc.Bandwidth[0]
+			assert.False(t, bw.Experimental)
+			assert.Equal(t, "AS", bw.Type)
+			assert.Equal(t, uint64(123), bw.Bandwidth)
+		}
+	}
+}
+
+func TestS8_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "a="}}
+
+	st, err := s8(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS9_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "e="}}
+
+	st, err := s9(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS10_KeyP_UnmarshalPhone(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "p=+1 111 111-1111\r\n"},
+	}
+
+	st, err := s10(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		if assert.NotNil(t, lex.desc.PhoneNumber) {
+			assert.Equal(t, "+1 111 111-1111", string(*lex.desc.PhoneNumber))
+		}
+	}
+}
+
+func TestS10_KeyC_UnmarshalSessionConnectionInformation(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "c=IN IP4 111.1.111.1\r\n"},
+	}
+
+	st, err := s10(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		if assert.NotNil(t, lex.desc.ConnectionInformation) {
+			ci := lex.desc.ConnectionInformation
+			assert.Equal(t, "IN", ci.NetworkType)
+			assert.Equal(t, "IP4", ci.AddressType)
+
+			if assert.NotNil(t, ci.Address) {
+				assert.Equal(t, "111.1.111.1", ci.Address.Address)
+			}
+		}
+	}
+}
+
+func TestS10_KeyB_UnmarshalSessionBandwidth(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "b=AS:123\r\n"},
+	}
+
+	st, err := s10(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		if assert.Len(t, lex.desc.Bandwidth, 1) {
+			bw := lex.desc.Bandwidth[0]
+			assert.False(t, bw.Experimental)
+			assert.Equal(t, "AS", bw.Type)
+			assert.Equal(t, uint64(123), bw.Bandwidth)
+		}
+	}
+}
+
+func TestS10_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "a="}}
+
+	st, err := s10(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS11_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "t="}}
+
+	st, err := s11(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS12_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "u="}}
+
+	st, err := s12(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS13_KeyA_UnmarshalSessionAttribute(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		cache:     &unmarshalCache{},
+		baseLexer: baseLexer{value: "a=recvonly\r\n"},
+	}
+
+	st, err := s13(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		attrs := lex.cache.cloneSessionAttributes()
+
+		if assert.Len(t, attrs, 1) {
+			assert.Equal(t, "recvonly", attrs[0].Key)
+			assert.Equal(t, "", attrs[0].Value)
+		}
+	}
+}
+
+func TestS13_KeyM_UnmarshalMediaDescription(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		cache:     &unmarshalCache{},
+		baseLexer: baseLexer{value: "m=audio 49170 RTP/AVP 0\r\n"},
+	}
+
+	st, err := s13(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		if assert.Len(t, lex.desc.MediaDescriptions, 1) {
+			md := lex.desc.MediaDescriptions[0]
+			assert.Equal(t, "audio", md.MediaName.Media)
+			assert.Equal(t, 49170, md.MediaName.Port.Value)
+			assert.Equal(t, []string{"RTP", "AVP"}, md.MediaName.Protos)
+			assert.Equal(t, []string{"0"}, md.MediaName.Formats)
+		}
+	}
+}
+
+func TestS13_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "t="}}
+
+	st, err := s13(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS14_KeyK_UnmarshalMediaEncryptionKey(t *testing.T) {
+	lex := &lexer{
+		desc: &SessionDescription{
+			MediaDescriptions: []*MediaDescription{{}},
+		},
+		baseLexer: baseLexer{value: "k=prompt\r\n"},
+	}
+
+	st, err := s14(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		md := lex.desc.MediaDescriptions[len(lex.desc.MediaDescriptions)-1]
+
+		if assert.NotNil(t, md.EncryptionKey) {
+			assert.Equal(t, "prompt", string(*md.EncryptionKey))
+		}
+	}
+}
+
+func TestS14_KeyB_UnmarshalMediaBandwidth(t *testing.T) {
+	lex := &lexer{
+		desc: &SessionDescription{
+			MediaDescriptions: []*MediaDescription{{}},
+		},
+		baseLexer: baseLexer{value: "b=AS:123\r\n"},
+	}
+
+	st, err := s14(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		md := lex.desc.MediaDescriptions[len(lex.desc.MediaDescriptions)-1]
+
+		if assert.Len(t, md.Bandwidth, 1) {
+			bw := md.Bandwidth[0]
+			assert.False(t, bw.Experimental)
+			assert.Equal(t, "AS", bw.Type)
+			assert.Equal(t, uint64(123), bw.Bandwidth)
+		}
+	}
+}
+
+func TestS14_KeyI_UnmarshalMediaTitle(t *testing.T) {
+	lex := &lexer{
+		desc: &SessionDescription{
+			MediaDescriptions: []*MediaDescription{{}},
+		},
+		baseLexer: baseLexer{value: "i=My Title\r\n"},
+	}
+
+	st, err := s14(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		md := lex.desc.MediaDescriptions[len(lex.desc.MediaDescriptions)-1]
+
+		if assert.NotNil(t, md.MediaTitle) {
+			assert.Equal(t, "My Title", string(*md.MediaTitle))
+		}
+	}
+}
+
+func TestS14_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "t="}}
+
+	st, err := s14(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS15_KeyA_UnmarshalMediaAttribute(t *testing.T) {
+	lex := &lexer{
+		desc: &SessionDescription{
+			MediaDescriptions: []*MediaDescription{{}}, // need an existing media section
+		},
+		cache:     &unmarshalCache{},
+		baseLexer: baseLexer{value: "a=rtpmap:96 opus/48000\r\n"},
+	}
+
+	st, err := s15(lex)
+	assert.NoError(t, err)
+	if assert.NotNil(t, st) {
+		_, err = st(lex) // run unmarshalMediaAttribute
+		assert.NoError(t, err)
+
+		attrs := lex.cache.cloneMediaAttributes()
+		if assert.Len(t, attrs, 1) {
+			assert.Equal(t, "rtpmap", attrs[0].Key)
+			assert.Equal(t, "96 opus/48000", attrs[0].Value)
+		}
+	}
+}
+
+func TestS15_KeyC_UnmarshalMediaConnectionInformation(t *testing.T) {
+	lex := &lexer{
+		desc: &SessionDescription{
+			MediaDescriptions: []*MediaDescription{{}},
+		},
+		baseLexer: baseLexer{value: "c=IN IP4 203.0.113.1\r\n"},
+	}
+
+	st, err := s15(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		md := lex.desc.MediaDescriptions[len(lex.desc.MediaDescriptions)-1]
+
+		if assert.NotNil(t, md.ConnectionInformation) {
+			ci := md.ConnectionInformation
+			assert.Equal(t, "IN", ci.NetworkType)
+			assert.Equal(t, "IP4", ci.AddressType)
+
+			if assert.NotNil(t, ci.Address) {
+				assert.Equal(t, "203.0.113.1", ci.Address.Address)
+			}
+		}
+	}
+}
+
+func TestS15_KeyM_UnmarshalMediaDescription(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		cache:     &unmarshalCache{},
+		baseLexer: baseLexer{value: "m=audio 49170 RTP/AVP 0\r\n"},
+	}
+
+	st, err := s15(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		if assert.Len(t, lex.desc.MediaDescriptions, 1) {
+			md := lex.desc.MediaDescriptions[0]
+			assert.Equal(t, "audio", md.MediaName.Media)
+			assert.Equal(t, 49170, md.MediaName.Port.Value)
+			assert.Equal(t, []string{"RTP", "AVP"}, md.MediaName.Protos)
+			assert.Equal(t, []string{"0"}, md.MediaName.Formats)
+		}
+	}
+}
+
+func TestS15_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "t="}}
+
+	st, err := s15(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestS16_KeyA_UnmarshalMediaAttribute(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		cache:     &unmarshalCache{},
+		baseLexer: baseLexer{value: "a=rtpmap:96 opus/48000\r\n"},
+	}
+
+	st, err := s16(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		attrs := lex.cache.cloneMediaAttributes()
+
+		if assert.Len(t, attrs, 1) {
+			assert.Equal(t, "rtpmap", attrs[0].Key)
+			assert.Equal(t, "96 opus/48000", attrs[0].Value)
+		}
+	}
+}
+
+func TestS16_KeyK_UnmarshalMediaEncryptionKey(t *testing.T) {
+	lex := &lexer{
+		desc: &SessionDescription{
+			MediaDescriptions: []*MediaDescription{{}},
+		},
+		baseLexer: baseLexer{value: "k=prompt\r\n"},
+	}
+
+	st, err := s16(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		md := lex.desc.MediaDescriptions[len(lex.desc.MediaDescriptions)-1]
+
+		if assert.NotNil(t, md.EncryptionKey) {
+			assert.Equal(t, "prompt", string(*md.EncryptionKey))
+		}
+	}
+}
+
+func TestS16_KeyB_UnmarshalMediaBandwidth(t *testing.T) {
+	lex := &lexer{
+		desc: &SessionDescription{
+			MediaDescriptions: []*MediaDescription{{}},
+		},
+		baseLexer: baseLexer{value: "b=AS:123\r\n"},
+	}
+
+	st, err := s16(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		md := lex.desc.MediaDescriptions[len(lex.desc.MediaDescriptions)-1]
+
+		if assert.Len(t, md.Bandwidth, 1) {
+			bw := md.Bandwidth[0]
+			assert.False(t, bw.Experimental)
+			assert.Equal(t, "AS", bw.Type)
+			assert.Equal(t, uint64(123), bw.Bandwidth)
+		}
+	}
+}
+
+func TestS16_KeyI_UnmarshalMediaTitle(t *testing.T) {
+	lex := &lexer{
+		desc: &SessionDescription{
+			MediaDescriptions: []*MediaDescription{{}},
+		},
+		baseLexer: baseLexer{value: "i=My Title\r\n"},
+	}
+
+	st, err := s16(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		md := lex.desc.MediaDescriptions[len(lex.desc.MediaDescriptions)-1]
+
+		if assert.NotNil(t, md.MediaTitle) {
+			assert.Equal(t, "My Title", string(*md.MediaTitle))
+		}
+	}
+}
+
+func TestS16_KeyM_UnmarshalMediaDescription(t *testing.T) {
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		cache:     &unmarshalCache{},
+		baseLexer: baseLexer{value: "m=audio 49170 RTP/AVP 0\r\n"},
+	}
+
+	st, err := s16(lex)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, st) {
+		_, err = st(lex)
+		assert.NoError(t, err)
+
+		if assert.Len(t, lex.desc.MediaDescriptions, 1) {
+			md := lex.desc.MediaDescriptions[0]
+			assert.Equal(t, "audio", md.MediaName.Media)
+			assert.Equal(t, 49170, md.MediaName.Port.Value)
+			assert.Equal(t, []string{"RTP", "AVP"}, md.MediaName.Protos)
+			assert.Equal(t, []string{"0"}, md.MediaName.Formats)
+		}
+	}
+}
+
+func TestS16_SyntaxError(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "u="}}
+
+	st, err := s16(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestUnmarshalProtocolVersion_Error_ReadUint64Field(t *testing.T) {
+	// non-numeric
+	l := &lexer{baseLexer: baseLexer{value: "x\r\n"}}
+
+	st, err := unmarshalProtocolVersion(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestUnmarshalProtocolVersion_Error_InvalidNonZeroVersion(t *testing.T) {
+	// version must be 0
+	l := &lexer{baseLexer: baseLexer{value: "1\r\n"}}
+
+	st, err := unmarshalProtocolVersion(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, errSDPInvalidValue)
+}
+
+func TestUnmarshalOrigin_Error_ReadUsernameField(t *testing.T) {
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: ""},
+	}
+
+	st, err := unmarshalOrigin(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalOrigin_Error_ReadNetworkTypeField(t *testing.T) {
+	// missing NetworkType
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "test 1 1"},
+	}
+
+	st, err := unmarshalOrigin(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalOrigin_Error_ReadUint64_SessionID(t *testing.T) {
+	// non-numeric sessionID
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "test NaN 1 IN IP4 11.1.1.1\r\n"},
+	}
+
+	st, err := unmarshalOrigin(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestUnmarshalOrigin_Error_ReadUint64_SessionVersion(t *testing.T) {
+	// non-numeric sessionVersion
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "test 1 NaN IN IP4 11.1.1.1\r\n"},
+	}
+
+	st, err := unmarshalOrigin(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestUnmarshalOrigin_Error_InvalidNetworkType(t *testing.T) {
+	// invalid network type
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "test 1 1 INVALID IP4 11.1.1.1\r\n"},
+	}
+
+	st, err := unmarshalOrigin(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, errSDPInvalidValue)
+}
+
+func TestUnmarshalOrigin_Error_HandleAddressType_Propagates(t *testing.T) {
+	// missing AddressType
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "test 1 1 IN"},
+	}
+
+	st, err := unmarshalOrigin(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalOrigin_Error_HandleUnicastAddress_Propagates(t *testing.T) {
+	// missing UnicastAddress
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "test 1 1 IN IP4"},
+	}
+
+	st, err := unmarshalOrigin(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestHandleAddressType_ReturnsUnderlyingError(t *testing.T) {
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: ""},
+	}
+
+	err := handleAddressType(l)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestHandleUnicastAddress_ReturnsUnderlyingError(t *testing.T) {
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: ""},
+	}
+
+	err := handleUnicastAddress(l)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalSessionName_Error_ReadLine(t *testing.T) {
+	l := &lexer{desc: &SessionDescription{}, baseLexer: baseLexer{value: ""}}
+	st, err := unmarshalSessionName(l)
+
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalSessionInformation_Error_ReadLine(t *testing.T) {
+	l := &lexer{desc: &SessionDescription{}, baseLexer: baseLexer{value: ""}}
+	st, err := unmarshalSessionInformation(l)
+
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalURI_Error_ReadLine(t *testing.T) {
+	l := &lexer{desc: &SessionDescription{}, baseLexer: baseLexer{value: ""}}
+	st, err := unmarshalURI(l)
+
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalURI_Error_Parse(t *testing.T) {
+	l := &lexer{desc: &SessionDescription{}, baseLexer: baseLexer{value: "%zz\r\n"}}
+	st, err := unmarshalURI(l)
+
+	assert.Nil(t, st)
+	assert.Error(t, err)
+}
+
+func TestUnmarshalEmail_Error_ReadLine(t *testing.T) {
+	l := &lexer{desc: &SessionDescription{}, baseLexer: baseLexer{value: ""}}
+	st, err := unmarshalEmail(l)
+
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalPhone_Error_ReadLine(t *testing.T) {
+	l := &lexer{desc: &SessionDescription{}, baseLexer: baseLexer{value: ""}}
+	st, err := unmarshalPhone(l)
+
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalSessionConnectionInformation_Error_FromInner(t *testing.T) {
+	l := &lexer{desc: &SessionDescription{}, baseLexer: baseLexer{value: ""}}
+	st, err := unmarshalSessionConnectionInformation(l)
+
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalConnectionInformation_ErrInvalidNetworkType(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "INVALID IP4 111.1.111.1\r\n"}}
+
+	ci, err := l.unmarshalConnectionInformation()
+	assert.Nil(t, ci)
+	assert.ErrorIs(t, err, errSDPInvalidValue)
+}
+
+func TestUnmarshalConnectionInformation_ErrReadAddressType(t *testing.T) {
+	// missing AddressType token
+	l := &lexer{baseLexer: baseLexer{value: "IN"}}
+
+	ci, err := l.unmarshalConnectionInformation()
+	assert.Nil(t, ci)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalConnectionInformation_ErrInvalidAddressType(t *testing.T) {
+	l := &lexer{baseLexer: baseLexer{value: "IN INVALID 111.1.111.1\r\n"}}
+
+	ci, err := l.unmarshalConnectionInformation()
+	assert.Nil(t, ci)
+	assert.ErrorIs(t, err, errSDPInvalidValue)
+}
+
+func TestUnmarshalConnectionInformation_ErrReadAddress(t *testing.T) {
+	// missing address token
+	l := &lexer{baseLexer: baseLexer{value: "IN IP4"}}
+
+	ci, err := l.unmarshalConnectionInformation()
+	assert.Nil(t, ci)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalSessionBandwidth_Error_ReadLine(t *testing.T) {
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: ""},
+	}
+
+	st, err := unmarshalSessionBandwidth(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalSessionBandwidth_Error_InvalidBandwidthValue(t *testing.T) {
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "bad\r\n"},
+	}
+
+	st, err := unmarshalSessionBandwidth(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, errSDPInvalidValue)
+}
+
+func TestUnmarshalBandwidth_InvalidType(t *testing.T) {
+	bw, err := unmarshalBandwidth("ZZ:123")
+	assert.Nil(t, bw)
+	assert.ErrorIs(t, err, errSDPInvalidValue)
+}
+
+func TestUnmarshalBandwidth_InvalidNumeric(t *testing.T) {
+	bw, err := unmarshalBandwidth("AS:notanumber")
+	assert.Nil(t, bw)
+	assert.ErrorIs(t, err, errSDPInvalidNumericValue)
+}
+
+func TestUnmarshalTiming_Error_StartTime(t *testing.T) {
+	// non-numeric start time
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "NaN 0\r\n"},
+	}
+
+	st, err := unmarshalTiming(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestUnmarshalTiming_Error_StopTime(t *testing.T) {
+	// non-numeric stop time
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "123 NaN\r\n"},
+	}
+
+	st, err := unmarshalTiming(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestUnmarshalRepeatTimes_Error_FirstFieldRead(t *testing.T) {
+	// no tokens
+	l := &lexer{
+		desc: &SessionDescription{
+			TimeDescriptions: []TimeDescription{{}},
+		},
+		baseLexer: baseLexer{value: ""},
+	}
+
+	st, err := unmarshalRepeatTimes(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalRepeatTimes_Error_SecondFieldRead(t *testing.T) {
+	// missing duration
+	l := &lexer{
+		desc: &SessionDescription{
+			TimeDescriptions: []TimeDescription{{}},
+		},
+		baseLexer: baseLexer{value: "604800"},
+	}
+
+	st, err := unmarshalRepeatTimes(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalRepeatTimes_Error_DurationParse(t *testing.T) {
+	// invalid duration token
+	l := &lexer{
+		desc: &SessionDescription{
+			TimeDescriptions: []TimeDescription{{}},
+		},
+		baseLexer: baseLexer{value: "604800 bad\r\n"},
+	}
+
+	st, err := unmarshalRepeatTimes(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, errSDPInvalidValue)
+}
+
+func TestUnmarshalRepeatTimes_Error_OffsetParse(t *testing.T) {
+	// invalid offset
+	l := &lexer{
+		desc: &SessionDescription{
+			TimeDescriptions: []TimeDescription{{}},
+		},
+		baseLexer: baseLexer{value: "604800 3600 nope\r\n"},
+	}
+
+	st, err := unmarshalRepeatTimes(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, errSDPInvalidValue)
+}
+
+func TestUnmarshalRepeatTimes_Error_ReadFieldInsideLoop(t *testing.T) {
+	l := &lexer{
+		desc: &SessionDescription{
+			TimeDescriptions: []TimeDescription{{}},
+		},
+		baseLexer: baseLexer{value: "604800 3600"},
+	}
+
+	st, err := unmarshalRepeatTimes(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalTimeZones_Error_ReadUint64Field(t *testing.T) {
+	// non-numeric starting token
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "NaN"},
+	}
+
+	st, err := unmarshalTimeZones(l)
+	assert.Nil(t, st)
+
+	var se syntaxError
+	assert.ErrorAs(t, err, &se)
+}
+
+func TestUnmarshalTimeZones_Error_ReadField(t *testing.T) {
+	// no space/offset token
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "123"},
+	}
+
+	st, err := unmarshalTimeZones(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalTimeZones_Error_ParseOffset(t *testing.T) {
+	// invalid offset token invalid
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "123 bad\r\n"},
+	}
+
+	st, err := unmarshalTimeZones(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, errSDPInvalidValue)
+}
+
+func TestUnmarshalSessionEncryptionKey_Error_ReadLine(t *testing.T) {
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: ""},
+	}
+
+	st, err := unmarshalSessionEncryptionKey(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalSessionAttribute_Error_ReadLine(t *testing.T) {
+	l := &lexer{
+		desc:      &SessionDescription{},
+		cache:     &unmarshalCache{},
+		baseLexer: baseLexer{value: ""},
+	}
+
+	st, err := unmarshalSessionAttribute(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalMediaDescription_Error_ReadMediaField(t *testing.T) {
+	// no tokens
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: ""},
+	}
+
+	st, err := unmarshalMediaDescription(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalMediaDescription_Error_InvalidMediaToken(t *testing.T) {
+	// media token is not in allowed set
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "data 9 RTP/AVP 0\r\n"},
+	}
+
+	st, err := unmarshalMediaDescription(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, errSDPInvalidValue)
+}
+
+func TestUnmarshalMediaDescription_Error_ReadPortField(t *testing.T) {
+	// no port token
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "audio"},
+	}
+
+	st, err := unmarshalMediaDescription(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalMediaDescription_Error_PortRangeInvalid(t *testing.T) {
+	// has invalid range part in port token
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "audio 123/abc RTP/AVP 0\r\n"},
+	}
+
+	st, err := unmarshalMediaDescription(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, errSDPInvalidValue)
+}
+
+func TestUnmarshalMediaDescription_Error_ReadProtoField(t *testing.T) {
+	// but no proto token
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "audio 9"},
+	}
+
+	st, err := unmarshalMediaDescription(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalMediaDescription_Error_ReadFieldInFormatsLoop(t *testing.T) {
+	// no newline or fmt tokens
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: "audio 9 RTP/AVP"},
+	}
+
+	st, err := unmarshalMediaDescription(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalMediaDescription_SetsPortRange(t *testing.T) {
+	// valid port with a range
+	lex := &lexer{
+		desc:      &SessionDescription{},
+		cache:     &unmarshalCache{},
+		baseLexer: baseLexer{value: "video 1234/7 RTP/AVP 99\r\n"},
+	}
+
+	st, err := unmarshalMediaDescription(lex)
+	assert.NoError(t, err)
+	assert.NotNil(t, st)
+
+	if assert.Len(t, lex.desc.MediaDescriptions, 1) {
+		md := lex.desc.MediaDescriptions[0]
+
+		if assert.NotNil(t, md.MediaName.Port.Range, "Range should be set when <port>/<range> is provided") {
+			assert.Equal(t, 7, *md.MediaName.Port.Range)
+		}
+	}
+}
+
+func TestUnmarshalMediaDescription_Error_InvalidProto(t *testing.T) {
+	// proto token not in the allowed list
+	l := &lexer{
+		desc:      &SessionDescription{},
+		cache:     &unmarshalCache{},
+		baseLexer: baseLexer{value: "audio 9 WRONG/PROTO 0\r\n"},
+	}
+
+	st, err := unmarshalMediaDescription(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, errSDPInvalidNumericValue)
+}
+
+func TestUnmarshalMediaTitle_Error_ReadLine(t *testing.T) {
+	// empty input
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: ""},
+	}
+
+	st, err := unmarshalMediaTitle(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalMediaConnectionInformation_Error_FromInner(t *testing.T) {
+	// empty input
+	l := &lexer{
+		desc: &SessionDescription{
+			MediaDescriptions: []*MediaDescription{{}},
+		},
+		baseLexer: baseLexer{value: ""},
+	}
+
+	st, err := unmarshalMediaConnectionInformation(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalMediaBandwidth_Error_ReadLine(t *testing.T) {
+	l := &lexer{
+		desc: &SessionDescription{
+			MediaDescriptions: []*MediaDescription{{}},
+		},
+		baseLexer: baseLexer{value: ""},
+	}
+
+	st, err := unmarshalMediaBandwidth(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalMediaBandwidth_Error_InvalidBandwidth(t *testing.T) {
+	l := &lexer{
+		desc: &SessionDescription{
+			MediaDescriptions: []*MediaDescription{{}},
+		},
+		baseLexer: baseLexer{value: "bad\r\n"},
+	}
+
+	st, err := unmarshalMediaBandwidth(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, errSDPInvalidSyntax)
+}
+
+func TestUnmarshalMediaEncryptionKey_Error_ReadLine(t *testing.T) {
+	// empty input
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: ""},
+	}
+
+	st, err := unmarshalMediaEncryptionKey(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestUnmarshalMediaAttribute_Error_ReadLine(t *testing.T) {
+	// empty input
+	l := &lexer{
+		desc:      &SessionDescription{},
+		baseLexer: baseLexer{value: ""},
+	}
+
+	st, err := unmarshalMediaAttribute(l)
+	assert.Nil(t, st)
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestTimeShorthand_MinutesAndSeconds(t *testing.T) {
+	t.Run("minutes (m)", func(t *testing.T) {
+		assert.Equal(t, int64(60), timeShorthand('m'))
+	})
+
+	t.Run("seconds (s)", func(t *testing.T) {
+		assert.Equal(t, int64(1), timeShorthand('s'))
+	})
 }
