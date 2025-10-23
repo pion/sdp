@@ -4,6 +4,7 @@
 package sdp
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -137,4 +138,50 @@ func TestMediaDescriptionCodec(t *testing.T) {
 		assert.Equal(t, "ssrc", md.Attributes[5].Key)
 		assert.Equal(t, "1234567890 label:test-label", md.Attributes[5].Value)
 	})
+}
+
+func Test_extMapURI_TransportCC(t *testing.T) {
+	m := extMapURI()
+	u, ok := m[ExtMapValueTransportCC]
+	assert.True(t, ok)
+	assert.Equal(t, "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01", u)
+}
+
+func TestSessionDescription_WithMedia_Appends(t *testing.T) {
+	sd, err := NewJSEPSessionDescription(false)
+	assert.NoError(t, err)
+
+	md := NewJSEPMediaDescription("audio", nil)
+	prev := len(sd.MediaDescriptions)
+
+	ret := sd.WithMedia(md)
+	assert.Same(t, sd, ret)
+	assert.Equal(t, prev+1, len(sd.MediaDescriptions))
+	assert.Equal(t, md, sd.MediaDescriptions[len(sd.MediaDescriptions)-1])
+}
+
+func TestMediaDescription_WithExtMap_AddsPropertyAttribute(t *testing.T) {
+	md := NewJSEPMediaDescription("audio", nil)
+
+	u, _ := url.Parse(extMapURI()[ExtMapValueTransportCC])
+	em := ExtMap{Value: ExtMapValueTransportCC, URI: u}
+
+	ret := md.WithExtMap(em)
+	assert.Same(t, md, ret)
+	if assert.Len(t, md.Attributes, 1) {
+		assert.Equal(t, "extmap:3 "+u.String(), md.Attributes[0].Key)
+		assert.Empty(t, md.Attributes[0].Value)
+	}
+}
+
+func TestMediaDescription_WithTransportCCExtMap_AddsExpectedAttribute(t *testing.T) {
+	md := NewJSEPMediaDescription("audio", nil)
+
+	ret := md.WithTransportCCExtMap()
+	assert.Same(t, md, ret)
+	if assert.Len(t, md.Attributes, 1) {
+		want := "extmap:3 " + extMapURI()[ExtMapValueTransportCC]
+		assert.Equal(t, want, md.Attributes[0].Key)
+		assert.Empty(t, md.Attributes[0].Value)
+	}
 }
