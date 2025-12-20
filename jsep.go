@@ -117,10 +117,34 @@ func (s *SessionDescription) WithValueAttribute(key, value string) *SessionDescr
 	return s
 }
 
+// addOrUpdateICEOption adds or updates the ice-options attribute with the given value.
+func (s *SessionDescription) addOrUpdateICEOption(value string) *SessionDescription {
+	for i := range s.Attributes {
+		if s.Attributes[i].Key == AttrKeyICEOptions {
+			prefix := " "
+			if s.Attributes[i].Value == "" {
+				prefix = ""
+			}
+
+			s.Attributes[i].Value += prefix + value
+
+			return s
+		}
+	}
+
+	return s.WithValueAttribute(AttrKeyICEOptions, value)
+}
+
 // WithICETrickleAdvertised advertises ICE trickle support in the session description.
 // See https://datatracker.ietf.org/doc/html/rfc9429#section-5.2.1
 func (s *SessionDescription) WithICETrickleAdvertised() *SessionDescription {
-	return s.WithValueAttribute(AttrKeyICEOptions, "trickle")
+	return s.addOrUpdateICEOption("trickle")
+}
+
+// WithICERenomination advertises ICE renomination support in the session description.
+// See https://datatracker.ietf.org/doc/html/draft-thatcher-ice-renomination-01#section-3
+func (s *SessionDescription) WithICERenomination() *SessionDescription {
+	return s.addOrUpdateICEOption("renomination")
 }
 
 // WithFingerprint adds a fingerprint to the session description.

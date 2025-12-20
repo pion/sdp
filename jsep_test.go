@@ -37,34 +37,88 @@ func TestNewJSEPSessionDescription(t *testing.T) {
 }
 
 func TestSessionDescriptionAttributes(t *testing.T) {
-	sd, err := NewJSEPSessionDescription(false)
-	assert.NoError(t, err)
-
 	t.Run("WithPropertyAttribute", func(t *testing.T) {
+		sd, err := NewJSEPSessionDescription(false)
+		assert.NoError(t, err)
 		sd = sd.WithPropertyAttribute(AttrKeyRTCPMux)
 		assert.Len(t, sd.Attributes, 1)
 		assert.Equal(t, AttrKeyRTCPMux, sd.Attributes[0].Key)
 	})
 
 	t.Run("WithValueAttribute", func(t *testing.T) {
+		sd, err := NewJSEPSessionDescription(false)
+		assert.NoError(t, err)
 		sd = sd.WithValueAttribute(AttrKeyMID, "video")
-		assert.Len(t, sd.Attributes, 2)
-		assert.Equal(t, AttrKeyMID, sd.Attributes[1].Key)
-		assert.Equal(t, "video", sd.Attributes[1].Value)
+		assert.Len(t, sd.Attributes, 1)
+		assert.Equal(t, AttrKeyMID, sd.Attributes[0].Key)
+		assert.Equal(t, "video", sd.Attributes[0].Value)
 	})
 
 	t.Run("WithICETrickleAdvertised", func(t *testing.T) {
+		sd, err := NewJSEPSessionDescription(false)
+		assert.NoError(t, err)
 		sd = sd.WithICETrickleAdvertised()
-		assert.Len(t, sd.Attributes, 3)
-		assert.Equal(t, AttrKeyICEOptions, sd.Attributes[2].Key)
-		assert.Equal(t, "trickle", sd.Attributes[2].Value)
+		assert.Len(t, sd.Attributes, 1)
+		assert.Equal(t, AttrKeyICEOptions, sd.Attributes[0].Key)
+		assert.Equal(t, "trickle", sd.Attributes[0].Value)
+	})
+
+	t.Run("WithICERenomination", func(t *testing.T) {
+		sd, err := NewJSEPSessionDescription(false)
+		assert.NoError(t, err)
+		sd = sd.WithICETrickleAdvertised().WithICERenomination()
+		assert.Len(t, sd.Attributes, 1)
+		assert.Equal(t, AttrKeyICEOptions, sd.Attributes[0].Key)
+		assert.Equal(t, "trickle renomination", sd.Attributes[0].Value)
 	})
 
 	t.Run("WithFingerprint", func(t *testing.T) {
+		sd, err := NewJSEPSessionDescription(false)
+		assert.NoError(t, err)
 		sd = sd.WithFingerprint("sha-256", "test-fingerprint")
-		assert.Len(t, sd.Attributes, 4)
-		assert.Equal(t, "fingerprint", sd.Attributes[3].Key)
-		assert.Equal(t, "sha-256 test-fingerprint", sd.Attributes[3].Value)
+		assert.Len(t, sd.Attributes, 1)
+		assert.Equal(t, "fingerprint", sd.Attributes[0].Key)
+		assert.Equal(t, "sha-256 test-fingerprint", sd.Attributes[0].Value)
+	})
+}
+
+func TestSessionDescription_ICEOptions_Combined(t *testing.T) {
+	t.Run("WithICETrickleAdvertised and WithICERenominationAdvertised", func(t *testing.T) {
+		sd, err := NewJSEPSessionDescription(false)
+		assert.NoError(t, err)
+
+		sd = sd.WithICETrickleAdvertised().WithICERenomination()
+
+		iceOptionsCount := 0
+		var iceOptionsValue string
+		for _, attr := range sd.Attributes {
+			if attr.Key == AttrKeyICEOptions {
+				iceOptionsCount++
+				iceOptionsValue = attr.Value
+			}
+		}
+
+		assert.Equal(t, 1, iceOptionsCount, "Should have exactly one ice-options attribute")
+		assert.Equal(t, "trickle renomination", iceOptionsValue, "Should combine both values with space")
+	})
+
+	t.Run("WithICERenominationAdvertised and WithICETrickleAdvertised (reverse order)", func(t *testing.T) {
+		sd, err := NewJSEPSessionDescription(false)
+		assert.NoError(t, err)
+
+		sd = sd.WithICERenomination().WithICETrickleAdvertised()
+
+		iceOptionsCount := 0
+		var iceOptionsValue string
+		for _, attr := range sd.Attributes {
+			if attr.Key == AttrKeyICEOptions {
+				iceOptionsCount++
+				iceOptionsValue = attr.Value
+			}
+		}
+
+		assert.Equal(t, 1, iceOptionsCount, "Should have exactly one ice-options attribute")
+		assert.Equal(t, "renomination trickle", iceOptionsValue, "Should combine both values with space")
 	})
 }
 
