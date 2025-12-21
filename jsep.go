@@ -235,6 +235,7 @@ func (d *MediaDescription) WithMediaSource(ssrc uint32, cname, streamLabel, labe
 }
 
 // WithCandidate adds an ICE candidate to the media description.
+//
 // Deprecated: use WithICECandidate instead.
 func (d *MediaDescription) WithCandidate(value string) *MediaDescription {
 	return d.WithValueAttribute("candidate", value)
