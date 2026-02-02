@@ -895,6 +895,7 @@ func unmarshalMediaDescription(lex *lexer) (stateFn, error) { //nolint:cyclop
 			"UDT",
 			"IX",
 			"MRCPv2",
+			"FEC",
 		) {
 			return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, field)
 		}
