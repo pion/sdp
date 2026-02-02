@@ -176,9 +176,8 @@ const (
 
 	MediaFECSDP = TimingSDP +
 		"m=application 50178 UDP/FEC *\r\n" +
-		"a=mid:R1\r\n" +
-		"a=fec-repair-flow:encoding-id=8; fssi=E:1500,S:0,m:8\r\n" +
-		"a=repair-window:200ms\r\n"
+		"a=fec-repair-flow:encoding-id=8; fssi=E:1234,S:0,m:7\r\n" +
+		"a=repair-window:500ms\r\n"
 
 	CanonicalUnmarshalSDP = "v=0\r\n" +
 		"o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5\r\n" +
