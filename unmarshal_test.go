@@ -174,6 +174,12 @@ const (
 	MediaTCPTLSMRCPv2 = TimingSDP +
 		"m=application 1544 TCP/TLS/MRCPv2 1\r\n"
 
+	MediaFECSDP = TimingSDP +
+		"m=application 50178 UDP/FEC *\r\n" +
+		"a=mid:R1\r\n" +
+		"a=fec-repair-flow:encoding-id=8; fssi=E:1500,S:0,m:8\r\n" +
+		"a=repair-window:200ms\r\n"
+
 	CanonicalUnmarshalSDP = "v=0\r\n" +
 		"o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5\r\n" +
 		"s=SDP Seminar\r\n" +
@@ -332,6 +338,10 @@ func TestRoundTrip(t *testing.T) {
 		{
 			Name: "MediaTCPTLSMRCPv2",
 			SDP:  MediaTCPTLSMRCPv2,
+		},
+		{
+			Name: "MediaFEC",
+			SDP:  MediaFECSDP,
 		},
 	} {
 		test := test
