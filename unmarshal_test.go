@@ -1812,19 +1812,6 @@ func TestUnmarshalMediaDescription_SetsPortRange(t *testing.T) {
 	}
 }
 
-func TestUnmarshalMediaDescription_Error_InvalidProto(t *testing.T) {
-	// proto token not in the allowed list
-	l := &lexer{
-		desc:      &SessionDescription{},
-		cache:     &unmarshalCache{},
-		baseLexer: baseLexer{value: "audio 9 WRONG/PROTO 0\r\n"},
-	}
-
-	st, err := unmarshalMediaDescription(l)
-	assert.Nil(t, st)
-	assert.ErrorIs(t, err, errSDPInvalidNumericValue)
-}
-
 func TestUnmarshalMediaTitle_Error_ReadLine(t *testing.T) {
 	// empty input
 	l := &lexer{

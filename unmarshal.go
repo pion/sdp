@@ -873,34 +873,7 @@ func unmarshalMediaDescription(lex *lexer) (stateFn, error) { //nolint:cyclop
 	if err != nil {
 		return nil, err
 	}
-
-	// Set according to currently registered with IANA
-	// https://tools.ietf.org/html/rfc4566#section-5.14
-	// https://tools.ietf.org/html/rfc4975#section-8.1
-	for _, proto := range strings.Split(field, "/") {
-		if !anyOf(
-			proto,
-			"UDP",
-			"RTP",
-			"AVP",
-			"SAVP",
-			"SAVPF",
-			"TLS",
-			"DTLS",
-			"SCTP",
-			"AVPF",
-			"TCP",
-			"MSRP",
-			"BFCP",
-			"UDT",
-			"IX",
-			"MRCPv2",
-			"FEC",
-		) {
-			return nil, fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, field)
-		}
-		newMediaDesc.MediaName.Protos = append(newMediaDesc.MediaName.Protos, proto)
-	}
+	newMediaDesc.MediaName.Protos = strings.Split(field, "/")
 
 	// <fmt>...
 	for {
