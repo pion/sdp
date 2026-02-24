@@ -521,3 +521,25 @@ func TestLexer_HandleType_SyntaxErrorWhenFnReturnsNil(t *testing.T) {
 	var se syntaxError
 	assert.ErrorAs(t, err, &se)
 }
+
+func BenchmarkGetCodecForPayloadType(b *testing.B) {
+	sd := getTestSessionDescription()
+	payloadTypes := []uint8{120, 121, 126, 97, 98}
+
+	b.Run("WithoutCaching", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			for _, pt := range payloadTypes {
+				_, _ = sd.GetCodecForPayloadType(pt)
+			}
+		}
+	})
+
+	b.Run("WithCaching", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			codecMap := sd.GetCodecMap()
+			for _, pt := range payloadTypes {
+				_ = codecMap[pt]
+			}
+		}
+	})
+}
