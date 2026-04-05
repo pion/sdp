@@ -293,7 +293,7 @@ func TestGetCodecsForPayloadTypes(t *testing.T) {
 func TestNewSessionID(t *testing.T) {
 	minVal := uint64(0x7FFFFFFFFFFFFFFF)
 	maxVal := uint64(0)
-	for i := 0; i < 10000; i++ {
+	for range 10000 {
 		r, err := newSessionID()
 		assert.NoError(t, err)
 		assert.Lessf(t, r, uint64((1<<64)-1), "Session ID must be less than 2**64-1, got %d", r)

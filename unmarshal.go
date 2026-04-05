@@ -877,7 +877,7 @@ func unmarshalMediaDescription(lex *lexer) (stateFn, error) { //nolint:cyclop
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
 	// https://tools.ietf.org/html/rfc4975#section-8.1
-	for _, proto := range strings.Split(field, "/") {
+	for proto := range strings.SplitSeq(field, "/") {
 		if !anyOf(
 			proto,
 			"UDP",
