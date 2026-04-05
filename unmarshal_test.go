@@ -343,7 +343,6 @@ func TestRoundTrip(t *testing.T) {
 			SDP:  MediaFECSDP,
 		},
 	} {
-		test := test
 		t.Run(test.Name, func(t *testing.T) {
 			sd := &SessionDescription{}
 
