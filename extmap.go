@@ -52,11 +52,11 @@ func (e *ExtMap) Unmarshal(raw string) error {
 
 	valdir := strings.Split(fields[0], "/")
 	value, err := strconv.ParseInt(valdir[0], 10, 64)
-	if (value < 1) || (value > 246) {
-		return fmt.Errorf("%w: %v -- extmap key must be in the range 1-256", errSyntaxError, valdir[0])
-	}
 	if err != nil {
 		return fmt.Errorf("%w: %v", errSyntaxError, valdir[0])
+	}
+	if (value < 1) || (value > 256) {
+		return fmt.Errorf("%w: %v -- extmap key must be in the range 1-256", errSyntaxError, valdir[0])
 	}
 
 	var direction Direction
