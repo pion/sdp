@@ -6,6 +6,7 @@ package sdp
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"strconv"
 	"strings"
@@ -998,18 +999,23 @@ func parseTimeUnits(value string) (num int64, err error) {
 	if len(value) == 0 {
 		return 0, fmt.Errorf("%w `%v`", errSDPInvalidValue, value)
 	}
-	k := timeShorthand(value[len(value)-1])
-	if k > 0 {
+	factor := timeShorthand(value[len(value)-1])
+	if factor > 0 {
 		num, err = strconv.ParseInt(value[:len(value)-1], 10, 64)
 	} else {
-		k = 1
+		factor = 1
 		num, err = strconv.ParseInt(value, 10, 64)
 	}
 	if err != nil {
 		return 0, fmt.Errorf("%w `%v`", errSDPInvalidValue, value)
 	}
 
-	return num * k, nil
+	// Check for overflow and return error if it would occur.
+	if factor > 1 && (num > math.MaxInt64/factor || num < math.MinInt64/factor) {
+		return 0, fmt.Errorf("%w `%v`", errSDPInvalidValue, value)
+	}
+
+	return num * factor, nil
 }
 
 func timeShorthand(b byte) int64 {

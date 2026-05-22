@@ -31,6 +31,14 @@ func TestLexer(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("uint64 overflow returns syntax error", func(t *testing.T) {
+		// 18446744073709551616 == 2^64, wraps to 0 without overflow check
+		l := &baseLexer{value: "18446744073709551616"}
+		_, err := l.readUint64Field()
+		var se syntaxError
+		assert.ErrorAs(t, err, &se, "overflow should return a syntaxError")
+	})
+
 	t.Run("many fields", func(t *testing.T) {
 		lex := &baseLexer{value: "aaa  123\nf1 f2\nlast"}
 

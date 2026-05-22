@@ -94,3 +94,27 @@ func TestExtMap_Unmarshal_Error_URLParse(t *testing.T) {
 	err := em.Unmarshal("extmap:1 http://example.com/%zz")
 	assert.Error(t, err)
 }
+
+func TestExtMap_Unmarshal_ValueBounds(t *testing.T) {
+	t.Run("value 1 accepted (lower bound)", func(t *testing.T) {
+		var em ExtMap
+		assert.NoError(t, em.Unmarshal("extmap:1 http://example.com"))
+		assert.Equal(t, 1, em.Value)
+	})
+
+	t.Run("value 0 rejected (below lower bound)", func(t *testing.T) {
+		var em ExtMap
+		assert.ErrorIs(t, em.Unmarshal("extmap:0 http://example.com"), errSyntaxError)
+	})
+
+	t.Run("value 256 accepted (upper bound)", func(t *testing.T) {
+		var em ExtMap
+		assert.NoError(t, em.Unmarshal("extmap:256 http://example.com"))
+		assert.Equal(t, 256, em.Value)
+	})
+
+	t.Run("value 257 rejected (above upper bound)", func(t *testing.T) {
+		var em ExtMap
+		assert.ErrorIs(t, em.Unmarshal("extmap:257 http://example.com"), errSyntaxError)
+	})
+}
