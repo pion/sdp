@@ -437,7 +437,7 @@ func TestBuildCodecMap_RtcpFbError(t *testing.T) {
 		},
 	}
 
-	codecs := sd.buildCodecMap()
+	codecs := sd.GetCodecMap()
 
 	// the three static codecs should be present, unchanged.
 	if assert.Len(t, codecs, 3) {

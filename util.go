@@ -226,7 +226,10 @@ func mergeCodecs(codec Codec, codecs map[uint8]Codec) {
 	codecs[savedCodec.PayloadType] = savedCodec
 }
 
-func (s *SessionDescription) buildCodecMap() map[uint8]Codec { //nolint:cyclop
+// GetCodecMap parses the SessionDescription and returns a map of payload
+// type to Codec. This allows callers to build the map once and look up
+// multiple payload types without rebuilding it each time.
+func (s *SessionDescription) GetCodecMap() map[uint8]Codec { //nolint:cyclop
 	codecs := map[uint8]Codec{
 		// static codecs that do not require a rtpmap
 		0: {
@@ -326,7 +329,7 @@ func codecsMatch(wanted, got Codec) bool {
 
 // GetCodecForPayloadType scans the SessionDescription for the given payload type and returns the codec.
 func (s *SessionDescription) GetCodecForPayloadType(payloadType uint8) (Codec, error) {
-	codecs := s.buildCodecMap()
+	codecs := s.GetCodecMap()
 
 	codec, ok := codecs[payloadType]
 	if ok {
@@ -337,7 +340,7 @@ func (s *SessionDescription) GetCodecForPayloadType(payloadType uint8) (Codec, e
 }
 
 func (s *SessionDescription) GetCodecsForPayloadTypes(payloadTypes []uint8) ([]Codec, error) {
-	codecs := s.buildCodecMap()
+	codecs := s.GetCodecMap()
 
 	result := make([]Codec, 0, len(payloadTypes))
 	for _, payloadType := range payloadTypes {
@@ -353,7 +356,7 @@ func (s *SessionDescription) GetCodecsForPayloadTypes(payloadTypes []uint8) ([]C
 // GetPayloadTypeForCodec scans the SessionDescription for a codec that matches the provided codec
 // as closely as possible and returns its payload type.
 func (s *SessionDescription) GetPayloadTypeForCodec(wanted Codec) (uint8, error) {
-	codecs := s.buildCodecMap()
+	codecs := s.GetCodecMap()
 
 	for payloadType, codec := range codecs {
 		if codecsMatch(wanted, codec) {
