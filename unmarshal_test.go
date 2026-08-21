@@ -1909,3 +1909,18 @@ func TestTimeShorthand_MinutesAndSeconds(t *testing.T) {
 		assert.Equal(t, int64(1), timeShorthand('s'))
 	})
 }
+
+func TestParseTimeUnits_Overflow(t *testing.T) {
+	// math.MaxInt64 = 9223372036854775807; multiplied by 3600 (h) overflows int64
+	_, err := parseTimeUnits("9223372036854775807h")
+	assert.Error(t, err, "positive overflow with 'h' shorthand should return error")
+
+	// math.MinInt64 = -9223372036854775808; multiplied by 3600 (h) overflows int64
+	_, err = parseTimeUnits("-9223372036854775808h")
+	assert.Error(t, err, "negative overflow with 'h' shorthand should return error")
+
+	// Largest value that does NOT overflow with 'd' (86400): math.MaxInt64/86400 = 106751991167300
+	v, err := parseTimeUnits("106751991167300d")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(106751991167300)*86400, v)
+}

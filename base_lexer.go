@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"slices"
 	"strconv"
 )
@@ -107,30 +108,16 @@ func (l *baseLexer) readUint64Field() (i uint64, err error) { //nolint:cyclop
 			break
 		}
 
-		switch ch {
-		case '0':
-			i *= 10
-		case '1':
-			i = i*10 + 1
-		case '2':
-			i = i*10 + 2
-		case '3':
-			i = i*10 + 3
-		case '4':
-			i = i*10 + 4
-		case '5':
-			i = i*10 + 5
-		case '6':
-			i = i*10 + 6
-		case '7':
-			i = i*10 + 7
-		case '8':
-			i = i*10 + 8
-		case '9':
-			i = i*10 + 9
-		default:
+		if ch < '0' || ch > '9' {
 			return i, l.syntaxError()
 		}
+
+		digit := uint64(ch - '0')
+		// Check for overflow and return syntax error if it would occur.
+		if i > (math.MaxUint64-digit)/10 {
+			return i, l.syntaxError()
+		}
+		i = i*10 + digit
 	}
 
 	return i, nil
