@@ -6,7 +6,9 @@ package sdp
 import (
 	"fmt"
 	"net/url"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -151,6 +153,22 @@ func (s *SessionDescription) WithICERenomination() *SessionDescription {
 // in the session description.
 func (s *SessionDescription) WithICESped() *SessionDescription {
 	return s.addOrUpdateICEOption("sped")
+}
+
+// HasICEOption reports whether the given ice-option is advertised, either at
+// session level or in any media description.
+func (s *SessionDescription) HasICEOption(option string) bool {
+	if value, ok := s.Attribute(AttrKeyICEOptions); ok && slices.Contains(strings.Fields(value), option) {
+		return true
+	}
+
+	for _, media := range s.MediaDescriptions {
+		if value, ok := media.Attribute(AttrKeyICEOptions); ok && slices.Contains(strings.Fields(value), option) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // WithFingerprint adds a fingerprint to the session description.

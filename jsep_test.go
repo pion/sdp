@@ -90,6 +90,25 @@ func TestSessionDescriptionAttributes(t *testing.T) {
 		assert.Equal(t, "sped", sd.Attributes[0].Value)
 	})
 
+	t.Run("HasICEOption", func(t *testing.T) {
+		sd, err := NewJSEPSessionDescription(false)
+		assert.NoError(t, err)
+		sd = sd.WithICETrickleAdvertised().WithICESped()
+		assert.True(t, sd.HasICEOption("trickle"))
+		assert.True(t, sd.HasICEOption("sped"))
+		assert.False(t, sd.HasICEOption("renomination"))
+		assert.False(t, sd.HasICEOption("spe"))
+	})
+
+	t.Run("HasICEOption in media description", func(t *testing.T) {
+		sd, err := NewJSEPSessionDescription(false)
+		assert.NoError(t, err)
+		sd = sd.WithMedia(&MediaDescription{MediaName: MediaName{Media: "application"}})
+		sd.MediaDescriptions[0].WithValueAttribute(AttrKeyICEOptions, "trickle sped")
+		assert.True(t, sd.HasICEOption("sped"))
+		assert.False(t, sd.HasICEOption("renomination"))
+	})
+
 	t.Run("WithFingerprint", func(t *testing.T) {
 		sd, err := NewJSEPSessionDescription(false)
 		assert.NoError(t, err)
