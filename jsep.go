@@ -147,6 +147,12 @@ func (s *SessionDescription) WithICERenomination() *SessionDescription {
 	return s.addOrUpdateICEOption("renomination")
 }
 
+// WithICESped advertises support for embedding the DTLS handshake into STUN
+// in the session description.
+func (s *SessionDescription) WithICESped() *SessionDescription {
+	return s.addOrUpdateICEOption("sped")
+}
+
 // WithFingerprint adds a fingerprint to the session description.
 func (s *SessionDescription) WithFingerprint(algorithm, value string) *SessionDescription {
 	return s.WithValueAttribute("fingerprint", algorithm+" "+value)

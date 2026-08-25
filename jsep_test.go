@@ -72,6 +72,24 @@ func TestSessionDescriptionAttributes(t *testing.T) {
 		assert.Equal(t, "trickle renomination", sd.Attributes[0].Value)
 	})
 
+	t.Run("WithICESped", func(t *testing.T) {
+		sd, err := NewJSEPSessionDescription(false)
+		assert.NoError(t, err)
+		sd = sd.WithICETrickleAdvertised().WithICESped()
+		assert.Len(t, sd.Attributes, 1)
+		assert.Equal(t, AttrKeyICEOptions, sd.Attributes[0].Key)
+		assert.Equal(t, "trickle sped", sd.Attributes[0].Value)
+	})
+
+	t.Run("WithICESped only", func(t *testing.T) {
+		sd, err := NewJSEPSessionDescription(false)
+		assert.NoError(t, err)
+		sd = sd.WithICESped()
+		assert.Len(t, sd.Attributes, 1)
+		assert.Equal(t, AttrKeyICEOptions, sd.Attributes[0].Key)
+		assert.Equal(t, "sped", sd.Attributes[0].Value)
+	})
+
 	t.Run("WithFingerprint", func(t *testing.T) {
 		sd, err := NewJSEPSessionDescription(false)
 		assert.NoError(t, err)
