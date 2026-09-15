@@ -4,7 +4,10 @@
 package sdp
 
 import (
+	"fmt"
 	"io"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -193,4 +196,82 @@ func TestReadLine_EOFWhenNoNewlinePresent(t *testing.T) {
 	assert.Empty(t, s)
 	assert.ErrorIs(t, err, io.EOF)
 	assert.Equal(t, len("tail"), l.pos, "pos should advance to end on EOF")
+}
+
+// largeSDP builds an offer with the given number of video sections, each with
+// the attributes a browser typically sends.
+func largeSDP(sections int) string {
+	var sdp strings.Builder
+	sdp.WriteString("v=0\r\no=- 4611731400430051336 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE")
+	for i := range sections {
+		fmt.Fprintf(&sdp, " %d", i)
+	}
+	sdp.WriteString("\r\na=msid-semantic: WMS\r\n")
+	for i := range sections {
+		sdp.WriteString("m=video 9 UDP/TLS/RTP/SAVPF 96 97 98 99 100 101\r\n")
+		sdp.WriteString("c=IN IP4 0.0.0.0\r\na=rtcp:9 IN IP4 0.0.0.0\r\n")
+		sdp.WriteString("a=ice-ufrag:AbCdEf01\r\na=ice-pwd:0123456789abcdefghijklmnop\r\na=ice-options:trickle\r\n")
+		sdp.WriteString("a=fingerprint:sha-256 6B:8B:F0:65:5F:78:E2:51:3B:AC:6F:F3:3F:46:1B:35:")
+		sdp.WriteString("DC:B8:5F:64:1A:24:C2:43:F0:A1:58:D0:A1:2C:19:08\r\n")
+		fmt.Fprintf(&sdp, "a=setup:actpass\r\na=mid:%d\r\n", i)
+		sdp.WriteString("a=extmap:1 urn:ietf:params:rtp-hdrext:toffset\r\n")
+		sdp.WriteString("a=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n")
+		sdp.WriteString("a=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\n")
+		sdp.WriteString("a=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\n")
+		fmt.Fprintf(&sdp, "a=sendonly\r\na=msid:stream%d track%d\r\na=rtcp-mux\r\na=rtcp-rsize\r\n", i, i)
+		for payloadType, name := range map[int]string{96: "VP8", 98: "VP9", 100: "H264"} {
+			fmt.Fprintf(&sdp, "a=rtpmap:%d %s/90000\r\n", payloadType, name)
+			for _, feedback := range []string{"goog-remb", "transport-cc", "ccm fir", "nack", "nack pli"} {
+				fmt.Fprintf(&sdp, "a=rtcp-fb:%d %s\r\n", payloadType, feedback)
+			}
+			fmt.Fprintf(&sdp, "a=rtpmap:%d rtx/90000\r\na=fmtp:%d apt=%d\r\n", payloadType+1, payloadType+1, payloadType)
+		}
+		fmt.Fprintf(&sdp, "a=ssrc-group:FID %d %d\r\n", 1000+2*i, 1001+2*i)
+		fmt.Fprintf(&sdp, "a=ssrc:%d cname:cname%d\r\na=ssrc:%d cname:cname%d\r\n", 1000+2*i, i, 1001+2*i, i)
+	}
+
+	return sdp.String()
+}
+
+func heapInuse() uint64 {
+	runtime.GC()
+	runtime.GC()
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+
+	return memStats.HeapInuse
+}
+
+// Keeping one parsed attribute must not keep the whole input alive.
+func TestUnmarshalDoesNotRetainInput(t *testing.T) {
+	const parses = 16
+	input := largeSDP(200)
+
+	before := heapInuse()
+	mids := make([]string, 0, parses)
+	for range parses {
+		// a fresh copy per parse, so only the parse result can keep it alive
+		sd := SessionDescription{}
+		assert.NoError(t, sd.UnmarshalString(strings.Clone(input)))
+		mid, ok := sd.MediaDescriptions[0].Attribute(AttrKeyMID)
+		assert.True(t, ok)
+		mids = append(mids, mid)
+	}
+	after := heapInuse()
+
+	t.Logf("heap in use: before %d KiB, after %d KiB (%d parses of a %d KiB input)",
+		before/1024, after/1024, parses, len(input)/1024)
+	// before the lexer copied its output, this grew by parses*len(input)
+	assert.Less(t, after, before+uint64(len(input))/2, "parsed strings pin the input")
+	runtime.KeepAlive(mids)
+}
+
+func BenchmarkUnmarshalLarge(b *testing.B) {
+	input := largeSDP(200)
+	b.SetBytes(int64(len(input)))
+	b.ReportAllocs()
+	for range b.N {
+		var sd SessionDescription
+		assert.NoError(b, sd.UnmarshalString(input))
+	}
 }

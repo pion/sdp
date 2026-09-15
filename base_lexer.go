@@ -9,6 +9,7 @@ import (
 	"io"
 	"slices"
 	"strconv"
+	"strings"
 )
 
 var errDocumentStart = errors.New("already on document start")
@@ -29,9 +30,24 @@ func (e syntaxError) Error() string {
 type baseLexer struct {
 	value string
 	pos   int
+	// returned strings are copied here so that a retained one pins at most
+	// one small buffer instead of the whole input
+	copies strings.Builder
 }
 
-func (l baseLexer) syntaxError() error {
+func (l *baseLexer) copyString(s string) string {
+	const bufSize = 4096
+	if l.copies.Cap()-l.copies.Len() < len(s) {
+		l.copies = strings.Builder{}
+		l.copies.Grow(max(min(bufSize, len(l.value)-l.pos+len(s)), len(s)))
+	}
+	l.copies.WriteString(s)
+	all := l.copies.String()
+
+	return all[len(all)-len(s):]
+}
+
+func (l *baseLexer) syntaxError() error {
 	return syntaxError{s: l.value, i: l.pos - 1}
 }
 
@@ -166,7 +182,7 @@ func (l *baseLexer) readField() (string, error) {
 		}
 	}
 
-	return l.value[start:stop], nil
+	return l.copyString(l.value[start:stop]), nil
 }
 
 func (l *lexer) readRequiredField() (string, error) {
@@ -195,7 +211,7 @@ func (l *baseLexer) readLine() (string, error) {
 			trim++
 		}
 		if ch == '\n' {
-			return l.value[start : l.pos-trim], nil
+			return l.copyString(l.value[start : l.pos-trim]), nil
 		}
 	}
 }
