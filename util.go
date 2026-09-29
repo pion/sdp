@@ -296,18 +296,15 @@ func equivalentFmtp(want, got string) bool {
 		return false
 	}
 
+	for i := range wantSplit {
+		wantSplit[i] = strings.TrimSpace(wantSplit[i])
+		gotSplit[i] = strings.TrimSpace(gotSplit[i])
+	}
+
 	sort.Strings(wantSplit)
 	sort.Strings(gotSplit)
 
-	for i, wantPart := range wantSplit {
-		wantPart = strings.TrimSpace(wantPart)
-		gotPart := strings.TrimSpace(gotSplit[i])
-		if gotPart != wantPart {
-			return false
-		}
-	}
-
-	return true
+	return slices.Equal(wantSplit, gotSplit)
 }
 
 func codecsMatch(wanted, got Codec) bool {

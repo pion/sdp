@@ -401,6 +401,33 @@ func TestEquivalentFmtp_MismatchAfterSortAndTrim(t *testing.T) {
 	assert.False(t, equivalentFmtp(want, got))
 }
 
+func TestEquivalentFmtp_WhitespaceAfterSemicolon(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		want, got string
+		equal     bool
+	}{
+		"three params": {
+			want:  "profile-level-id=42e01f; level-asymmetry-allowed=1; packetization-mode=1",
+			got:   "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
+			equal: true,
+		},
+		"different order": {
+			want:  "packetization-mode=1; profile-level-id=42e01f; level-asymmetry-allowed=1",
+			got:   "level-asymmetry-allowed=1; profile-level-id=42e01f; packetization-mode=1",
+			equal: true,
+		},
+		"different value": {
+			want:  "profile-level-id=42e01f; level-asymmetry-allowed=1; packetization-mode=1",
+			got:   "level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=42e01f",
+			equal: false,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, testCase.equal, equivalentFmtp(testCase.want, testCase.got))
+		})
+	}
+}
+
 func TestParseRtcpFb_MissingSpace(t *testing.T) {
 	c, wildcard, err := parseRtcpFb("rtcp-fb:97")
 	assert.ErrorIs(t, err, errExtractCodecRtcpFb)
