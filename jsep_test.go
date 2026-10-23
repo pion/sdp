@@ -200,15 +200,18 @@ func TestMediaDescriptionCodec(t *testing.T) {
 
 	t.Run("WithMediaSource", func(t *testing.T) {
 		md = md.WithMediaSource(1234567890, "test-cname", "test-stream", "test-label")
-		assert.Len(t, md.Attributes, 6)
+		assert.Len(t, md.Attributes, 4)
 		assert.Equal(t, "ssrc", md.Attributes[2].Key)
 		assert.Equal(t, "1234567890 cname:test-cname", md.Attributes[2].Value)
 		assert.Equal(t, "ssrc", md.Attributes[3].Key)
 		assert.Equal(t, "1234567890 msid:test-stream test-label", md.Attributes[3].Value)
-		assert.Equal(t, "ssrc", md.Attributes[4].Key)
-		assert.Equal(t, "1234567890 mslabel:test-stream", md.Attributes[4].Value)
-		assert.Equal(t, "ssrc", md.Attributes[5].Key)
-		assert.Equal(t, "1234567890 label:test-label", md.Attributes[5].Value)
+	})
+
+	t.Run("WithMsid", func(t *testing.T) {
+		md = md.WithMsid("test-stream", "test-track")
+		assert.Len(t, md.Attributes, 5)
+		assert.Equal(t, "msid", md.Attributes[4].Key)
+		assert.Equal(t, "test-stream test-track", md.Attributes[4].Value)
 	})
 }
 
